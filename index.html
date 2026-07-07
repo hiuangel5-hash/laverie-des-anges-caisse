@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laverie des Anges — Caisse</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="logo.svg">
+<meta name="theme-color" content="#1b3a5c">
+<style>
+  :root{
+    --navy:#1b3a5c; --navy-dark:#132b44; --gold:#c9a24b; --bg:#f4f6f8;
+    --card:#ffffff; --border:#e0e4e8; --text:#22303d; --muted:#6b7a86;
+    --danger:#c0392b; --ok:#2e7d4f;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text);margin:0;}
+  header.topbar{background:var(--navy);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  header.topbar .brand{display:flex;align-items:center;gap:12px;}
+  header.topbar .brand img{height:44px;border-radius:6px;background:#fff;padding:2px;}
+  header.topbar .brand .logo-fallback{height:44px;width:44px;border-radius:50%;background:var(--gold);color:var(--navy-dark);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;}
+  header.topbar h1{font-size:18px;margin:0;font-weight:600;}
+  header.topbar small{display:block;color:#cfd9e3;font-size:12px;}
+  .topbar-actions{display:flex;gap:8px;align-items:center;}
+  button, select, input{font-family:inherit;font-size:14px;}
+  .btn{border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:600;transition:.15s;}
+  .btn-primary{background:var(--navy);color:#fff;}
+  .btn-primary:hover{background:var(--navy-dark);}
+  .btn-gold{background:var(--gold);color:var(--navy-dark);}
+  .btn-gold:hover{filter:brightness(1.05);}
+  .btn-outline{background:transparent;border:1px solid #ffffff55;color:#fff;}
+  .btn-outline:hover{background:#ffffff22;}
+  .btn-light{background:#fff;border:1px solid var(--border);color:var(--text);}
+  .btn-light:hover{background:#f0f2f4;}
+  .btn-danger{background:var(--danger);color:#fff;}
+  main{max-width:1200px;margin:20px auto;padding:0 16px 60px;display:grid;grid-template-columns:1.5fr 1fr;gap:20px;}
+  @media(max-width:900px){ main{grid-template-columns:1fr;} }
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:18px;}
+  .card h2{margin:0 0 12px;font-size:16px;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:8px;}
+  .category h3{margin:14px 0 8px;font-size:14px;color:var(--navy-dark);text-transform:uppercase;letter-spacing:.03em;}
+  table.items{width:100%;border-collapse:collapse;font-size:13.5px;}
+  table.items th{text-align:left;color:var(--muted);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--border);}
+  table.items td{padding:6px 6px;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  table.items input.qty{width:56px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;text-align:center;}
+  .item-note{color:var(--muted);font-size:11.5px;}
+  .price-col{white-space:nowrap;text-align:right;font-weight:600;}
+  .toggle-row{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13.5px;}
+  .cart-line{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;border-bottom:1px dashed #eee;}
+  .cart-total{display:flex;justify-content:space-between;font-size:17px;font-weight:700;color:var(--navy);border-top:2px solid var(--gold);padding-top:8px;margin-top:8px;}
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:3px;font-weight:600;}
+  .field input, .field select, .field textarea{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:6px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .discount-row{display:grid;grid-template-columns:100px 1fr;gap:8px;}
+  .pay-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;}
+  .pay-option{border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;}
+  .pay-option.selected{border-color:var(--navy);background:#eef3f8;font-weight:700;}
+  .card-fields{background:#f7f9fb;border:1px dashed var(--border);border-radius:8px;padding:10px;margin-top:8px;font-size:13px;}
+  .warn{background:#fff6e6;border:1px solid #f0d99a;color:#8a6300;border-radius:6px;padding:8px 10px;font-size:12.5px;margin:8px 0;}
+  .hidden{display:none !important;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;padding:30px 10px;overflow:auto;z-index:100;}
+  .modal{background:#fff;border-radius:10px;max-width:720px;width:100%;padding:0;}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);}
+  .modal-body{padding:18px;max-height:75vh;overflow:auto;}
+  .modal-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+  .close-x{border:none;background:none;font-size:20px;cursor:pointer;color:var(--muted);}
+
+  /* Receipt */
+  #receipt{font-family:Segoe UI,Arial,sans-serif;color:#111;}
+  #receipt .r-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--gold);padding-bottom:10px;margin-bottom:12px;}
+  #receipt .r-head img{height:56px;}
+  #receipt .r-company{font-size:12.5px;color:#333;line-height:1.5;}
+  #receipt .r-company b{font-size:16px;color:var(--navy);}
+  #receipt .r-meta{text-align:right;font-size:12.5px;}
+  #receipt .r-meta .rnum{font-size:15px;font-weight:700;color:var(--navy);}
+  #receipt h3{font-size:13px;color:var(--navy);text-transform:uppercase;margin:14px 0 6px;}
+  #receipt table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  #receipt table th, #receipt table td{border:1px solid #ccc;padding:5px 7px;}
+  #receipt table th{background:#f0f2f4;text-align:left;}
+  #receipt .r-totals{width:280px;margin-left:auto;margin-top:10px;font-size:13px;}
+  #receipt .r-totals div{display:flex;justify-content:space-between;padding:3px 0;}
+  #receipt .r-totals .grand{font-weight:700;font-size:15px;border-top:2px solid var(--gold);padding-top:6px;}
+  #receipt .r-legal{font-size:10.5px;color:#555;margin-top:16px;border-top:1px solid #ddd;padding-top:8px;line-height:1.5;}
+  #receipt .r-client{font-size:12.5px;line-height:1.6;}
+  @media print{
+    body *{visibility:hidden;}
+    #receiptPrintArea, #receiptPrintArea *{visibility:visible;}
+    #receiptPrintArea{position:absolute;left:0;top:0;width:100%;}
+    .modal-head, .modal-foot{display:none !important;}
+  }
+  .lang-switch{display:flex;border:1px solid #ffffff55;border-radius:6px;overflow:hidden;}
+  .lang-switch button{background:transparent;color:#fff;border:none;padding:6px 12px;cursor:pointer;font-weight:600;}
+  .lang-switch button.active{background:var(--gold);color:var(--navy-dark);}
+  #history table{width:100%;font-size:13px;border-collapse:collapse;}
+  #history th, #history td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;}
+  .badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:#fff;}
+  .badge-cash{background:#2e7d4f;} .badge-card{background:#2b6cb0;} .badge-gift{background:#8e44ad;} .badge-unpaid{background:#c0392b;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img id="logoImg" src="" alt="logo" class="hidden" onerror="this.classList.add('hidden');document.getElementById('logoFallback').classList.remove('hidden')">
+    <div id="logoFallback" class="logo-fallback hidden">LA</div>
+    <div>
+      <h1 data-i18n="appTitle">Laverie des Anges — Caisse</h1>
+      <small id="companyAddrTop">37 avenue du 159e RIA, 05100 Briançon</small>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <div class="lang-switch">
+      <button id="btnFr" class="active" onclick="setLang('fr')">FR</button>
+      <button id="btnEn" onclick="setLang('en')">EN</button>
+    </div>
+    <button class="btn btn-outline" onclick="openHistory()" data-i18n="history">Historique</button>
+    <button class="btn btn-outline" onclick="openSettings()" data-i18n="settings">Réglages</button>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT: Catalog -->
+  <div>
+    <div class="card">
+      <h2 data-i18n="catalogTitle">Articles</h2>
+      <div id="catalog"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Order / Client / Payment -->
+  <div>
+    <div class="card">
+      <h2 data-i18n="orderSummary">Résumé de la commande</h2>
+      <div id="cartLines"><p class="item-note" data-i18n="noItems">Aucun article sélectionné.</p></div>
+      <div class="warn hidden" id="minOrderWarn"></div>
+
+      <div class="discount-row" style="margin-top:10px;">
+        <select id="discountType">
+          <option value="percent">%</option>
+          <option value="fixed">€</option>
+        </select>
+        <input type="number" id="discountValue" min="0" step="0.01" value="0" placeholder="0">
+      </div>
+      <div class="field" style="margin-top:4px;">
+        <label data-i18n="discountLabel">Remise</label>
+      </div>
+
+      <div class="cart-total">
+        <span data-i18n="totalDue">Total à payer</span>
+        <span id="grandTotal">0,00 €</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="clientInfo">Informations client</h2>
+      <div class="row2">
+        <div class="field">
+          <label data-i18n="lastName">Nom *</label>
+          <input id="cLastName" type="text">
+        </div>
+        <div class="field">
+          <label data-i18n="firstName">Prénom *</label>
+          <input id="cFirstName" type="text">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label data-i18n="phone">Téléphone *</label>
+          <input id="cPhone" type="tel">
+        </div>
+        <div class="field">
+          <label data-i18n="email">Email (facultatif — pour e-reçu)</label>
+          <input id="cEmail" type="email">
+        </div>
+      </div>
+      <div class="field">
+        <label data-i18n="address">Adresse (facultatif — e-reçu / livraison payante)</label>
+        <input id="cAddress" type="text">
+      </div>
+      <div class="field">
+        <label data-i18n="txDate">Date de la transaction</label>
+        <input id="cDate" type="date">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="payment">Paiement</h2>
+      <div class="pay-options" id="payOptions">
+        <div class="pay-option" data-val="cash" onclick="selectPay('cash')"><span data-i18n="payCash">Espèces</span></div>
+        <div class="pay-option" data-val="card" onclick="selectPay('card')"><span data-i18n="payCard">Carte bancaire</span></div>
+        <div class="pay-option" data-val="gift" onclick="selectPay('gift')"><span data-i18n="payGift">Carte cadeau</span></div>
+        <div class="pay-option" data-val="unpaid" onclick="selectPay('unpaid')"><span data-i18n="payUnpaid">Non payé (à percevoir)</span></div>
+      </div>
+      <div id="giftFields" class="card-fields hidden">
+        <div class="field">
+          <label data-i18n="giftCode">Code / N° de la carte cadeau</label>
+          <input id="giftCode" type="text">
+        </div>
+      </div>
+
+      <button class="btn btn-gold" style="width:100%;margin-top:14px;padding:12px;font-size:15px;" onclick="generateReceipt()" data-i18n="generateReceipt">Générer le reçu</button>
+    </div>
+  </div>
+</main>
+
+<!-- RECEIPT MODAL -->
+<div class="modal-overlay hidden" id="receiptModal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-head">
+      <strong data-i18n="receiptTitle">Reçu</strong>
+      <button class="close-x" onclick="closeModal('receiptModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="receiptPrintArea">
+        <div id="receipt"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-light" onclick="closeModal('receiptModal')" data-i18n="close">Fermer</button>
+      <button class="btn btn-primary" onclick="window.print()" data-i18n="printReceipt">Imprimer / PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay hidden" id="settingsModal">
+  <div class="modal">
+    <div class="modal-head">
+      <strong data-i18n="settingsTitle">Réglages de l'entreprise</strong>
+      <button class="close-x" onclick="closeModal('settingsModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="warn" data-i18n="settingsWarn">Ces informations apparaissent sur chaque reçu et sont nécessaires pour la conformité TVA / comptable. Vérifiez-les avant toute utilisation réelle.</div>
+      <div class="row2">
+        <div class="field"><label data-i18n="stCompanyName">Nom de l'entreprise</label><input id="stCompanyName"></div>
+        <div class="field"><label data-i18n="stPhone">Téléphone</label><input id="stPhone"></div>
+      </div>
+      <div class="field"><label data-i18n="stAddress">Adresse</label><input id="stAddress"></div>
+      <div class="row2">
+        <div class="field"><label data-i18n="stSiret">N° SIRET</label><input id="stSiret" placeholder="123 456 789 00012"></div>
+        <div class="field"><label data-i18n="stLegalForm">Forme juridique</label><input id="stLegalForm" placeholder="EI / SARL / SAS ..."></div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label data-i18n="stVatRegime">Régime de TVA</label>
+          <select id="stVatRegime" onchange="toggleVatRateField()">
+            <option value="applicable" data-i18n="vatApplicable">Assujetti à la TVA</option>
+            <option value="exempt" data-i18n="vatExempt">Franchise en base (art. 293B du CGI) — non assujetti</option>
+          </select>
+        </div>
+        <div class="field" id="vatRateField">
+          <label data-i18n="stVatRate">Taux de TVA (%)</label>
+          <input id="stVatRate" type="number" step="0.1" value="20">
+        </div>
+      </div>
+      <div class="field" id="vatNumberField"><label data-i18n="stVatNumber">N° de TVA intracommunautaire (si assujetti)</label><input id="stVatNumber" placeholder="FRxxXXXXXXXXX"></div>
+      <div class="field">
+        <label data-i18n="stReceiptPrefix">Préfixe des numéros de reçu</label>
+        <input id="stReceiptPrefix" placeholder="LDA">
+      </div>
+      <div class="field">
+        <label data-i18n="stLogo">Logo (image, facultatif)</label>
+        <input id="stLogoFile" type="file" accept="image/*" onchange="handleLogoUpload(event)">
+        <div style="margin-top:6px;">
+          <button class="btn btn-light" onclick="clearLogo()" data-i18n="removeLogo">Retirer le logo</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-light" onclick="closeModal('settingsModal')" data-i18n="cancel">Annuler</button>
+      <button class="btn btn-primary" onclick="saveSettings()" data-i18n="save">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-overlay hidden" id="historyModal">
+  <div class="modal" style="max-width:820px;">
+    <div class="modal-head">
+      <strong data-i18n="historyTitle">Historique des transactions</strong>
+      <button class="close-x" onclick="closeModal('historyModal')">&times;</button>
+    </div>
+    <div class="modal-body" id="history"></div>
+    <div class="modal-foot">
+      <button class="btn btn-light" onclick="exportCsv()" data-i18n="exportCsv">Exporter CSV</button>
+      <button class="btn btn-light" onclick="closeModal('historyModal')" data-i18n="close">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= DATA ================= */
+const ITEMS = [
+  {id:'rent_kit1', cat:'rental', fr:'Kit lit simple', en:'Single bed kit', note_fr:'housse, taie, drap', note_en:'duvet cover, pillowcase, sheet', price:16.40},
+  {id:'rent_kit2', cat:'rental', fr:'Kit lit double', en:'Double bed kit', note_fr:'housse, 2 taies, drap', note_en:'duvet cover, 2 pillowcases, sheet', price:19.60},
+  {id:'rent_towelkit', cat:'rental', fr:'Kit serviette', en:'Towel kit', note_fr:'drap de bain + serviette', note_en:'bath towel + hand towel', price:7.50},
+  {id:'rent_bathtowel', cat:'rental', fr:'Drap de bain (location)', en:'Bath towel (rental)', note_fr:'70×140', note_en:'70×140', price:5.00},
+
+  {id:'bed_kit1', cat:'bed', fr:'Kit lit complet 1p', en:'Complete bed kit — single', note_fr:'housse, taie, drap — lavage', note_en:'cover, pillowcase, sheet — washing', price:10.00},
+  {id:'bed_kit2', cat:'bed', fr:'Kit lit complet 2p', en:'Complete bed kit — double', note_fr:'housse, 2 taies, drap — lavage', note_en:'cover, 2 pillowcases, sheet — washing', price:12.40},
+  {id:'bed_fitted1', cat:'bed', fr:'Drap-housse ou drap plat 1p', en:'Fitted or flat sheet — single', price:4.20},
+  {id:'bed_fitted2', cat:'bed', fr:'Drap-housse ou drap plat 2p', en:'Fitted or flat sheet — double', price:4.60},
+  {id:'bed_duvetcover1', cat:'bed', fr:'Housse de couette 1p', en:'Duvet cover — single', price:4.90},
+  {id:'bed_duvetcover2', cat:'bed', fr:'Housse de couette 2p', en:'Duvet cover — double', price:6.10},
+  {id:'bed_pillowcase', cat:'bed', fr:"Taie d'oreiller", en:'Pillowcase', price:1.50},
+  {id:'bed_protect1', cat:'bed', fr:'Protège-matelas 1p', en:'Mattress protector — single', price:4.40},
+  {id:'bed_protect2', cat:'bed', fr:'Protège-matelas 2p', en:'Mattress protector — double', price:6.60},
+
+  {id:'bath_towel', cat:'bath', fr:'Drap de bain', en:'Bath towel', price:2.10},
+  {id:'bath_terry', cat:'bath', fr:'Serviette éponge', en:'Terry towel', price:1.90},
+  {id:'bath_mat', cat:'bath', fr:'Tapis de bain', en:'Bath mat', price:2.50},
+
+  {id:'table_cloth', cat:'table', fr:"Nappe (jusqu'à 12 couverts)", en:'Tablecloth (up to 12 settings)', price:8.50},
+  {id:'table_napkin', cat:'table', fr:'Serviette de table', en:'Table napkin', price:1.40},
+  {id:'table_towel', cat:'table', fr:'Torchon', en:'Tea towel', price:1.50},
+  {id:'table_apron', cat:'table', fr:'Tablier', en:'Apron', price:4.50},
+
+  {id:'big_synth1', cat:'big', fr:'Couette synthétique 1p', en:'Synthetic duvet — single', price:16.90},
+  {id:'big_synth2', cat:'big', fr:'Couette synthétique 2p', en:'Synthetic duvet — double', price:21.90},
+  {id:'big_down1', cat:'big', fr:'Couette plume / duvet 1p', en:'Feather/down duvet — single', price:21.90},
+  {id:'big_down2', cat:'big', fr:'Couette plume / duvet 2p', en:'Feather/down duvet — double', price:26.90},
+  {id:'big_blanket', cat:'big', fr:'Couverture / plaid', en:'Blanket / throw', price:17.50},
+  {id:'big_pillow_synth', cat:'big', fr:'Oreiller synthétique', en:'Synthetic pillow', price:5.90},
+  {id:'big_pillow_down', cat:'big', fr:'Oreiller plume', en:'Feather pillow', price:10.00},
+  {id:'big_sofa', cat:'big', fr:'Housse de canapé', en:'Sofa cover', price:32.00},
+
+  {id:'ski_downlight_a', cat:'ski', fr:'Doudoune légère adulte', en:'Light down jacket — adult', price:12.00},
+  {id:'ski_downlight_c', cat:'ski', fr:'Doudoune légère enfant', en:'Light down jacket — child', price:8.40},
+  {id:'ski_down_a', cat:'ski', fr:'Doudoune de ski adulte', en:'Ski jacket — adult', price:18.00},
+  {id:'ski_sleeveless', cat:'ski', fr:'Doudoune sans manches', en:'Sleeveless down jacket', price:12.20},
+  {id:'ski_pants_a', cat:'ski', fr:'Pantalon de ski adulte', en:'Ski pants — adult', price:12.20},
+  {id:'ski_pants_c', cat:'ski', fr:'Pantalon de ski enfant', en:'Ski pants — child', price:10.00},
+  {id:'ski_reproof', cat:'ski', fr:'Option réimperméabilisation', en:'Waterproofing option', note_fr:'par article', note_en:'per item', price:11.00},
+
+  {id:'weight_8', cat:'weight', fr:'Machine 8 kg', en:'8 kg machine', note_fr:'lavé, séché & plié', note_en:'washed, dried & folded', price:18.50},
+  {id:'weight_13', cat:'weight', fr:'Machine 13 kg', en:'13 kg machine', note_fr:'lavé, séché & plié', note_en:'washed, dried & folded', price:24.90},
+  {id:'weight_17', cat:'weight', fr:'Machine 17 kg', en:'17 kg machine', note_fr:'lavé, séché & plié', note_en:'washed, dried & folded', price:30.90},
+
+  {id:'delivery', cat:'delivery', fr:'Frais de livraison', en:'Delivery fee', price:12.00}
+];
+
+const CATS = [
+  {key:'rental', fr:'Location de linge', en:'Linen rental'},
+  {key:'bed', fr:'Linge de lit', en:'Bed linen'},
+  {key:'bath', fr:'Linge de bain', en:'Bath linen'},
+  {key:'table', fr:'Linge de table', en:'Table linen'},
+  {key:'big', fr:'Grandes pièces', en:'Large items'},
+  {key:'ski', fr:'Vêtements de montagne', en:'Mountain clothing'},
+  {key:'weight', fr:'Lavé, séché & plié — au poids', en:'Washed, dried & folded — by weight'},
+  {key:'delivery', fr:'Livraison', en:'Delivery'}
+];
+
+const MIN_ORDER = 15.00;
+const URGENT_SURCHARGE = 0.5;
+
+/* ================= I18N ================= */
+const STRINGS = {
+  fr:{
+    appTitle:'Laverie des Anges — Caisse', history:'Historique', settings:'Réglages',
+    catalogTitle:'Articles', orderSummary:'Résumé de la commande', noItems:'Aucun article sélectionné.',
+    discountLabel:'Remise', totalDue:'Total à payer', clientInfo:'Informations client',
+    lastName:'Nom *', firstName:'Prénom *', phone:'Téléphone *', email:'Email (facultatif — pour e-reçu)',
+    address:'Adresse (facultatif — e-reçu / livraison payante)', txDate:'Date de la transaction',
+    payment:'Paiement', payCash:'Espèces', payCard:'Carte bancaire', payGift:'Carte cadeau', payUnpaid:'Non payé (à percevoir)',
+    giftCode:'Code / N° de la carte cadeau', generateReceipt:'Générer le reçu',
+    receiptTitle:'Reçu', close:'Fermer', printReceipt:'Imprimer / PDF',
+    settingsTitle:"Réglages de l'entreprise",
+    settingsWarn:'Ces informations apparaissent sur chaque reçu et sont nécessaires pour la conformité TVA / comptable. Vérifiez-les avant toute utilisation réelle.',
+    stCompanyName:"Nom de l'entreprise", stPhone:'Téléphone', stAddress:'Adresse',
+    stSiret:'N° SIRET', stLegalForm:'Forme juridique', stVatRegime:'Régime de TVA',
+    vatApplicable:'Assujetti à la TVA', vatExempt:'Franchise en base (art. 293B du CGI) — non assujetti',
+    stVatRate:'Taux de TVA (%)', stVatNumber:'N° de TVA intracommunautaire (si assujetti)',
+    stReceiptPrefix:'Préfixe des numéros de reçu', stLogo:'Logo (image, facultatif)', removeLogo:'Retirer le logo',
+    cancel:'Annuler', save:'Enregistrer', historyTitle:'Historique des transactions', exportCsv:'Exporter CSV',
+    urgent:'Urgence 24h (+50%)', qty:'Qté', unitPrice:'Prix unitaire', lineTotal:'Total',
+    subtotal:'Sous-total', discountApplied:'Remise', minOrderApplied:'Montant minimum de commande (15,00 €) appliqué',
+    urgentSurchargeLabel:'Majoration urgence 24h (+50%)',
+    fillRequired:'Merci de renseigner le nom, le prénom et le téléphone du client, et de sélectionner au moins un article.',
+    receiptNo:'Reçu n°', dateLabel:'Date', client:'Client', description:'Désignation', qtyShort:'Qté',
+    unitHT:'PU HT', vatRate:'TVA', unitTTC:'PU TTC', total:'Total TTC', totalHT:'Total HT', totalVAT:'Total TVA',
+    totalTTC:'Total TTC', amountPaid:'Montant payé', balanceDue:'Solde restant dû', paymentMethod:'Mode de règlement',
+    vatExemptNote:'TVA non applicable, article 293 B du CGI.', thanks:'Merci de votre confiance !',
+    legalKeep:'Ce reçu constitue une pièce justificative comptable à conserver.', phoneLabel:'Tél',
+    emailLabel:'Email', addressLabel:'Adresse', siretLabel:'SIRET', vatNoLabel:'N° TVA',
+    statusPaid:'Payé', statusUnpaid:'Non payé — à percevoir', statusCash:'Payé en espèces',
+    statusCard:'Payé par carte bancaire', statusGift:'Payé par carte cadeau',
+    delete:'Supprimer', reprint:'Réimprimer', noHistory:'Aucune transaction enregistrée.'
+  },
+  en:{
+    appTitle:'Laverie des Anges — Checkout', history:'History', settings:'Settings',
+    catalogTitle:'Items', orderSummary:'Order summary', noItems:'No item selected.',
+    discountLabel:'Discount', totalDue:'Total due', clientInfo:'Client information',
+    lastName:'Last name *', firstName:'First name *', phone:'Phone *', email:'Email (optional — for e-receipt)',
+    address:'Address (optional — e-receipt / paid delivery)', txDate:'Transaction date',
+    payment:'Payment', payCash:'Cash', payCard:'Credit card', payGift:'Gift card', payUnpaid:'Not paid (to be collected)',
+    giftCode:'Gift card code / number', generateReceipt:'Generate receipt',
+    receiptTitle:'Receipt', close:'Close', printReceipt:'Print / PDF',
+    settingsTitle:'Company settings',
+    settingsWarn:'This information appears on every receipt and is required for VAT/accounting compliance. Verify it before real use.',
+    stCompanyName:'Company name', stPhone:'Phone', stAddress:'Address',
+    stSiret:'SIRET number', stLegalForm:'Legal form', stVatRegime:'VAT regime',
+    vatApplicable:'Subject to VAT', vatExempt:'VAT exempt (franchise en base, art. 293B CGI)',
+    stVatRate:'VAT rate (%)', stVatNumber:'Intra-EU VAT number (if applicable)',
+    stReceiptPrefix:'Receipt number prefix', stLogo:'Logo (image, optional)', removeLogo:'Remove logo',
+    cancel:'Cancel', save:'Save', historyTitle:'Transaction history', exportCsv:'Export CSV',
+    urgent:'24h express (+50%)', qty:'Qty', unitPrice:'Unit price', lineTotal:'Total',
+    subtotal:'Subtotal', discountApplied:'Discount', minOrderApplied:'Minimum order amount (€15.00) applied',
+    urgentSurchargeLabel:'24h express surcharge (+50%)',
+    fillRequired:'Please fill in the client last name, first name and phone number, and select at least one item.',
+    receiptNo:'Receipt no.', dateLabel:'Date', client:'Client', description:'Description', qtyShort:'Qty',
+    unitHT:'Unit excl. VAT', vatRate:'VAT', unitTTC:'Unit incl. VAT', total:'Total incl. VAT', totalHT:'Total excl. VAT', totalVAT:'Total VAT',
+    totalTTC:'Total incl. VAT', amountPaid:'Amount paid', balanceDue:'Balance due', paymentMethod:'Payment method',
+    vatExemptNote:'VAT not applicable, article 293 B of the French General Tax Code.', thanks:'Thank you for your trust!',
+    legalKeep:'This receipt is a supporting accounting document to be kept.', phoneLabel:'Phone',
+    emailLabel:'Email', addressLabel:'Address', siretLabel:'SIRET', vatNoLabel:'VAT no.',
+    statusPaid:'Paid', statusUnpaid:'Unpaid — to be collected', statusCash:'Paid in cash',
+    statusCard:'Paid by credit card', statusGift:'Paid by gift card',
+    delete:'Delete', reprint:'Reprint', noHistory:'No transaction recorded yet.'
+  }
+};
+let lang = localStorage.getItem('lda_lang') || 'fr';
+function t(key){ return (STRINGS[lang] && STRINGS[lang][key]) || key; }
+
+/* ================= STATE ================= */
+let cart = {}; // id -> qty
+let selectedPay = null;
+let settings = loadSettings();
+
+function loadSettings(){
+  const def = {
+    companyName:'Laverie des Anges',
+    address:'37 avenue du 159e RIA, 05100 Briançon',
+    phone:'04 84 13 18 50',
+    siret:'', legalForm:'', vatRegime:'exempt', vatRate:20,
+    vatNumber:'', receiptPrefix:'LDA', logo:''
+  };
+  try{
+    const stored = JSON.parse(localStorage.getItem('lda_settings') || 'null');
+    return Object.assign(def, stored || {});
+  }catch(e){ return def; }
+}
+function saveSettingsToStorage(){ localStorage.setItem('lda_settings', JSON.stringify(settings)); }
+
+function getReceipts(){ return JSON.parse(localStorage.getItem('lda_receipts') || '[]'); }
+function saveReceipts(list){ localStorage.setItem('lda_receipts', JSON.stringify(list)); }
+function nextReceiptNumber(){
+  const year = new Date().getFullYear();
+  let counters = JSON.parse(localStorage.getItem('lda_counters') || '{}');
+  counters[year] = (counters[year] || 0) + 1;
+  localStorage.setItem('lda_counters', JSON.stringify(counters));
+  return `${settings.receiptPrefix || 'LDA'}-${year}-${String(counters[year]).padStart(4,'0')}`;
+}
+
+/* ================= RENDER CATALOG ================= */
+function renderCatalog(){
+  const el = document.getElementById('catalog');
+  el.innerHTML = '';
+  CATS.forEach(cat=>{
+    const items = ITEMS.filter(i=>i.cat===cat.key);
+    if(!items.length) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'category';
+    const h3 = document.createElement('h3');
+    h3.textContent = lang==='fr' ? cat.fr : cat.en;
+    wrap.appendChild(h3);
+
+    if(cat.key === 'ski'){
+      const urgWrap = document.createElement('div');
+      urgWrap.innerHTML = '';
+      wrap.appendChild(urgWrap);
+    }
+
+    const table = document.createElement('table');
+    table.className = 'items';
+    table.innerHTML = `<thead><tr><th>${lang==='fr'?'Article':'Item'}</th><th class="price-col">${t('unitPrice')}</th><th>${t('qty')}</th></tr></thead>`;
+    const tbody = document.createElement('tbody');
+    items.forEach(it=>{
+      const tr = document.createElement('tr');
+      const name = lang==='fr' ? it.fr : it.en;
+      const note = lang==='fr' ? it.note_fr : it.note_en;
+      tr.innerHTML = `
+        <td>${name}${note?`<div class="item-note">${note}</div>`:''}</td>
+        <td class="price-col">${fmt(it.price)}</td>
+        <td><input type="number" min="0" step="1" class="qty" data-id="${it.id}" value="${cart[it.id]||0}"></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    el.appendChild(wrap);
+  });
+
+  // urgent toggle at bottom of catalog
+  const urg = document.createElement('div');
+  urg.className = 'toggle-row';
+  urg.innerHTML = `<input type="checkbox" id="urgentToggle"> <label for="urgentToggle">${t('urgent')}</label>`;
+  el.appendChild(urg);
+
+  el.querySelectorAll('input.qty').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const id = inp.dataset.id;
+      const v = Math.max(0, parseInt(inp.value||'0',10));
+      cart[id] = v;
+      renderCart();
+    });
+  });
+  document.getElementById('urgentToggle').addEventListener('change', renderCart);
+  if(document.getElementById('urgentToggle')) document.getElementById('urgentToggle').checked = !!window._urgent;
+}
+
+function fmt(n){
+  return n.toLocaleString(lang==='fr'?'fr-FR':'en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+}
+
+/* ================= CART CALC ================= */
+function computeCart(){
+  let lines = [];
+  let subtotal = 0;
+  ITEMS.forEach(it=>{
+    const qty = cart[it.id] || 0;
+    if(qty>0){
+      const lineTotal = qty * it.price;
+      subtotal += lineTotal;
+      lines.push({item:it, qty, lineTotal});
+    }
+  });
+  const urgentChecked = document.getElementById('urgentToggle') ? document.getElementById('urgentToggle').checked : false;
+  let urgentSurcharge = 0;
+  // urgency surcharge applies to everything except the delivery fee line
+  if(urgentChecked){
+    const deliveryTotal = lines.filter(l=>l.item.cat==='delivery').reduce((s,l)=>s+l.lineTotal,0);
+    urgentSurcharge = (subtotal - deliveryTotal) * URGENT_SURCHARGE;
+  }
+  let preDiscount = subtotal + urgentSurcharge;
+
+  let minOrderApplied = false;
+  if(preDiscount>0 && preDiscount < MIN_ORDER){
+    minOrderApplied = true;
+    preDiscount = MIN_ORDER;
+  }
+
+  const discountType = document.getElementById('discountType').value;
+  const discountValueRaw = parseFloat(document.getElementById('discountValue').value||'0') || 0;
+  let discountAmount = 0;
+  if(discountType === 'percent'){
+    discountAmount = preDiscount * (discountValueRaw/100);
+  } else {
+    discountAmount = discountValueRaw;
+  }
+  discountAmount = Math.min(Math.max(discountAmount,0), preDiscount);
+
+  const total = Math.max(0, preDiscount - discountAmount);
+
+  return {lines, subtotal, urgentChecked, urgentSurcharge, minOrderApplied, discountAmount, total};
+}
+
+function renderCart(){
+  const c = computeCart();
+  const linesEl = document.getElementById('cartLines');
+  if(c.lines.length===0){
+    linesEl.innerHTML = `<p class="item-note">${t('noItems')}</p>`;
+  } else {
+    let html = '';
+    c.lines.forEach(l=>{
+      const name = lang==='fr'? l.item.fr : l.item.en;
+      html += `<div class="cart-line"><span>${l.qty} × ${name}</span><span>${fmt(l.lineTotal)}</span></div>`;
+    });
+    html += `<div class="cart-line"><span>${t('subtotal')}</span><span>${fmt(c.subtotal)}</span></div>`;
+    if(c.urgentChecked){
+      html += `<div class="cart-line"><span>${t('urgentSurchargeLabel')}</span><span>${fmt(c.urgentSurcharge)}</span></div>`;
+    }
+    if(c.discountAmount>0){
+      html += `<div class="cart-line"><span>${t('discountApplied')}</span><span>-${fmt(c.discountAmount)}</span></div>`;
+    }
+    linesEl.innerHTML = html;
+  }
+  const warnEl = document.getElementById('minOrderWarn');
+  if(c.minOrderApplied){
+    warnEl.classList.remove('hidden');
+    warnEl.textContent = t('minOrderApplied');
+  } else {
+    warnEl.classList.add('hidden');
+  }
+  document.getElementById('grandTotal').textContent = fmt(c.total);
+  return c;
+}
+
+/* ================= PAYMENT UI ================= */
+function selectPay(val){
+  selectedPay = val;
+  document.querySelectorAll('.pay-option').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.val===val);
+  });
+  document.getElementById('giftFields').classList.toggle('hidden', val!=='gift');
+}
+
+/* ================= SETTINGS MODAL ================= */
+function openSettings(){
+  document.getElementById('stCompanyName').value = settings.companyName;
+  document.getElementById('stPhone').value = settings.phone;
+  document.getElementById('stAddress').value = settings.address;
+  document.getElementById('stSiret').value = settings.siret;
+  document.getElementById('stLegalForm').value = settings.legalForm;
+  document.getElementById('stVatRegime').value = settings.vatRegime;
+  document.getElementById('stVatRate').value = settings.vatRate;
+  document.getElementById('stVatNumber').value = settings.vatNumber;
+  document.getElementById('stReceiptPrefix').value = settings.receiptPrefix;
+  toggleVatRateField();
+  document.getElementById('settingsModal').classList.remove('hidden');
+}
+function toggleVatRateField(){
+  const exempt = document.getElementById('stVatRegime').value === 'exempt';
+  document.getElementById('vatRateField').style.display = exempt ? 'none' : 'block';
+  document.getElementById('vatNumberField').style.display = exempt ? 'none' : 'block';
+}
+function handleLogoUpload(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { settings.logo = e.target.result; applyLogo(); };
+  reader.readAsDataURL(file);
+}
+function clearLogo(){ settings.logo=''; applyLogo(); saveSettingsToStorage(); }
+function applyLogo(){
+  const img = document.getElementById('logoImg');
+  const fb = document.getElementById('logoFallback');
+  img.src = settings.logo || 'logo.svg';
+  img.classList.remove('hidden');
+  fb.classList.add('hidden');
+}
+function saveSettings(){
+  settings.companyName = document.getElementById('stCompanyName').value.trim();
+  settings.phone = document.getElementById('stPhone').value.trim();
+  settings.address = document.getElementById('stAddress').value.trim();
+  settings.siret = document.getElementById('stSiret').value.trim();
+  settings.legalForm = document.getElementById('stLegalForm').value.trim();
+  settings.vatRegime = document.getElementById('stVatRegime').value;
+  settings.vatRate = parseFloat(document.getElementById('stVatRate').value)||0;
+  settings.vatNumber = document.getElementById('stVatNumber').value.trim();
+  settings.receiptPrefix = document.getElementById('stReceiptPrefix').value.trim() || 'LDA';
+  saveSettingsToStorage();
+  document.getElementById('companyAddrTop').textContent = settings.address;
+  closeModal('settingsModal');
+}
+
+/* ================= RECEIPT GENERATION ================= */
+function generateReceipt(){
+  const c = renderCart();
+  const lastName = document.getElementById('cLastName').value.trim();
+  const firstName = document.getElementById('cFirstName').value.trim();
+  const phone = document.getElementById('cPhone').value.trim();
+  const email = document.getElementById('cEmail').value.trim();
+  const address = document.getElementById('cAddress').value.trim();
+  const date = document.getElementById('cDate').value || new Date().toISOString().slice(0,10);
+
+  if(!lastName || !firstName || !phone || c.lines.length===0 || !selectedPay){
+    alert(t('fillRequired') + (selectedPay ? '' : ' ('+t('payment')+')'));
+    return;
+  }
+
+  const paidNow = selectedPay !== 'unpaid';
+  const amountPaid = paidNow ? c.total : 0;
+  const balanceDue = c.total - amountPaid;
+
+  const extra = {};
+  if(selectedPay==='gift'){
+    extra.giftCode = document.getElementById('giftCode').value.trim();
+  }
+
+  const receiptNumber = nextReceiptNumber();
+  const record = {
+    receiptNumber, date, issuedAt: date,
+    client:{lastName, firstName, phone, email, address},
+    lines: c.lines.map(l=>({id:l.item.id, fr:l.item.fr, en:l.item.en, qty:l.qty, unitPrice:l.item.price, lineTotal:l.lineTotal})),
+    subtotal:c.subtotal, urgent:c.urgentChecked, urgentSurcharge:c.urgentSurcharge,
+    minOrderApplied:c.minOrderApplied, discountAmount:c.discountAmount, total:c.total,
+    paymentMethod:selectedPay, amountPaid, balanceDue, extra,
+    vatRegimeAtSale: settings.vatRegime, vatRateAtSale: settings.vatRate
+  };
+  const receipts = getReceipts();
+  receipts.push(record);
+  saveReceipts(receipts);
+
+  renderReceiptHTML(record);
+  document.getElementById('receiptModal').classList.remove('hidden');
+
+  // reset form for next transaction
+  cart = {}; selectedPay = null;
+  document.getElementById('discountValue').value = 0;
+  document.getElementById('cLastName').value='';
+  document.getElementById('cFirstName').value='';
+  document.getElementById('cPhone').value='';
+  document.getElementById('cEmail').value='';
+  document.getElementById('cAddress').value='';
+  document.querySelectorAll('.pay-option').forEach(el=>el.classList.remove('selected'));
+  document.getElementById('giftFields').classList.add('hidden');
+  renderCatalog();
+  renderCart();
+  setDefaultDate();
+}
+
+function renderReceiptHTML(r){
+  const vatApplicable = r.vatRegimeAtSale === 'applicable';
+  const rate = r.vatRateAtSale || 0;
+
+  let rowsHtml = '';
+  r.lines.forEach(l=>{
+    const name = lang==='fr' ? l.fr : l.en;
+    if(vatApplicable){
+      const unitHT = l.unitPrice / (1+rate/100);
+      const lineHT = l.lineTotal / (1+rate/100);
+      rowsHtml += `<tr>
+        <td>${name}</td><td>${l.qty}</td>
+        <td>${fmt(unitHT)}</td><td>${rate}%</td>
+        <td>${fmt(l.unitPrice)}</td><td>${fmt(l.lineTotal)}</td>
+      </tr>`;
+    } else {
+      rowsHtml += `<tr>
+        <td>${name}</td><td>${l.qty}</td>
+        <td>${fmt(l.unitPrice)}</td><td>${fmt(l.lineTotal)}</td>
+      </tr>`;
+    }
+  });
+
+  const headCols = vatApplicable
+    ? `<th>${t('description')}</th><th>${t('qtyShort')}</th><th>${t('unitHT')}</th><th>${t('vatRate')}</th><th>${t('unitTTC')}</th><th>${t('total')}</th>`
+    : `<th>${t('description')}</th><th>${t('qtyShort')}</th><th>${t('unitPrice')}</th><th>${t('total')}</th>`;
+
+  let totalHT=0, totalVAT=0;
+  if(vatApplicable){
+    totalHT = r.total / (1+rate/100);
+    totalVAT = r.total - totalHT;
+  }
+
+  const payLabelMap = {cash:t('statusCash'), card:t('statusCard'), gift:t('statusGift'), unpaid:t('statusUnpaid')};
+  let payExtraHtml = '';
+  if(r.paymentMethod==='gift' && r.extra){
+    payExtraHtml = `<div>${t('giftCode')}: ${r.extra.giftCode||'-'}</div>`;
+  }
+
+  const html = `
+    <div class="r-head">
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <img src="${settings.logo || 'logo.svg'}">
+        <div class="r-company">
+          <b>${settings.companyName}</b><br>
+          ${settings.address}<br>
+          ${t('phoneLabel')}: ${settings.phone}<br>
+          ${settings.siret ? t('siretLabel')+': '+settings.siret+'<br>' : ''}
+          ${settings.legalForm ? settings.legalForm+'<br>' : ''}
+          ${vatApplicable && settings.vatNumber ? t('vatNoLabel')+': '+settings.vatNumber : ''}
+        </div>
+      </div>
+      <div class="r-meta">
+        <div class="rnum">${t('receiptNo')} ${r.receiptNumber}</div>
+        <div>${t('dateLabel')}: ${r.date}</div>
+      </div>
+    </div>
+
+    <h3>${t('client')}</h3>
+    <div class="r-client">
+      ${r.client.firstName} ${r.client.lastName}<br>
+      ${t('phoneLabel')}: ${r.client.phone}<br>
+      ${r.client.email ? t('emailLabel')+': '+r.client.email+'<br>' : ''}
+      ${r.client.address ? t('addressLabel')+': '+r.client.address+'<br>' : ''}
+    </div>
+
+    <h3>${t('description')}</h3>
+    <table>
+      <thead><tr>${headCols}</tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+
+    <div class="r-totals">
+      <div><span>${t('subtotal')}</span><span>${fmt(r.subtotal)}</span></div>
+      ${r.urgent ? `<div><span>${t('urgentSurchargeLabel')}</span><span>${fmt(r.urgentSurcharge)}</span></div>` : ''}
+      ${r.discountAmount>0 ? `<div><span>${t('discountApplied')}</span><span>-${fmt(r.discountAmount)}</span></div>` : ''}
+      ${vatApplicable ? `
+        <div><span>${t('totalHT')}</span><span>${fmt(totalHT)}</span></div>
+        <div><span>${t('totalVAT')} (${rate}%)</span><span>${fmt(totalVAT)}</span></div>
+      ` : ''}
+      <div class="grand"><span>${t('totalTTC')}</span><span>${fmt(r.total)}</span></div>
+      <div><span>${t('amountPaid')}</span><span>${fmt(r.amountPaid)}</span></div>
+      ${r.balanceDue>0 ? `<div><span>${t('balanceDue')}</span><span>${fmt(r.balanceDue)}</span></div>` : ''}
+    </div>
+
+    <h3>${t('paymentMethod')}</h3>
+    <div>${payLabelMap[r.paymentMethod]}</div>
+    ${payExtraHtml}
+
+    <div class="r-legal">
+      ${vatApplicable ? '' : t('vatExemptNote')+'<br>'}
+      ${t('legalKeep')}<br>
+      ${t('thanks')}
+    </div>
+  `;
+  document.getElementById('receipt').innerHTML = html;
+}
+
+/* ================= HISTORY ================= */
+function openHistory(){
+  const receipts = getReceipts().slice().reverse();
+  const el = document.getElementById('history');
+  if(receipts.length===0){
+    el.innerHTML = `<p class="item-note">${t('noHistory')}</p>`;
+  } else {
+    let html = '<table><thead><tr><th>'+t('receiptNo')+'</th><th>'+t('dateLabel')+'</th><th>'+t('client')+'</th><th>'+t('totalTTC')+'</th><th>'+t('paymentMethod')+'</th><th></th></tr></thead><tbody>';
+    receipts.forEach(r=>{
+      const badgeClass = {cash:'badge-cash',card:'badge-card',gift:'badge-gift',unpaid:'badge-unpaid'}[r.paymentMethod];
+      const payLabelMap = {cash:t('statusCash'), card:t('statusCard'), gift:t('statusGift'), unpaid:t('statusUnpaid')};
+      html += `<tr>
+        <td>${r.receiptNumber}</td><td>${r.date}</td>
+        <td>${r.client.firstName} ${r.client.lastName}</td>
+        <td>${fmt(r.total)}</td>
+        <td><span class="badge ${badgeClass}">${payLabelMap[r.paymentMethod]}</span></td>
+        <td><button class="btn btn-light" onclick="reprint('${r.receiptNumber}')">${t('reprint')}</button></td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
+  document.getElementById('historyModal').classList.remove('hidden');
+}
+function reprint(receiptNumber){
+  const r = getReceipts().find(x=>x.receiptNumber===receiptNumber);
+  if(!r) return;
+  renderReceiptHTML(r);
+  closeModal('historyModal');
+  document.getElementById('receiptModal').classList.remove('hidden');
+}
+function exportCsv(){
+  const receipts = getReceipts();
+  let csv = 'Receipt No;Date;Last Name;First Name;Phone;Email;Address;Subtotal;Urgent Surcharge;Discount;Total TTC;Amount Paid;Balance Due;Payment Method\n';
+  receipts.forEach(r=>{
+    csv += [r.receiptNumber, r.date, r.client.lastName, r.client.firstName, r.client.phone, r.client.email, r.client.address,
+      r.subtotal.toFixed(2), r.urgentSurcharge.toFixed(2), r.discountAmount.toFixed(2), r.total.toFixed(2),
+      r.amountPaid.toFixed(2), r.balanceDue.toFixed(2), r.paymentMethod].join(';') + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'laverie_des_anges_transactions.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ================= MISC ================= */
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+function setDefaultDate(){ document.getElementById('cDate').value = new Date().toISOString().slice(0,10); }
+
+function setLang(l){
+  lang = l;
+  localStorage.setItem('lda_lang', l);
+  document.documentElement.lang = l;
+  document.getElementById('btnFr').classList.toggle('active', l==='fr');
+  document.getElementById('btnEn').classList.toggle('active', l==='en');
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    el.textContent = t(el.dataset.i18n);
+  });
+  renderCatalog();
+  renderCart();
+}
+
+/* ================= INIT ================= */
+document.getElementById('discountType').addEventListener('change', renderCart);
+document.getElementById('discountValue').addEventListener('input', renderCart);
+
+applyLogo();
+setDefaultDate();
+renderCatalog();
+renderCart();
+setLang(lang);
+
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
