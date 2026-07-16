@@ -38,6 +38,7 @@
   @media(max-width:900px){ main{grid-template-columns:1fr;} }
   .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:18px;}
   .card h2{margin:0 0 12px;font-size:16px;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:8px;}
+  .card-header-row{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:2px solid var(--gold);padding-bottom:8px;margin-bottom:12px;flex-wrap:wrap;}
   .category h3{margin:14px 0 8px;font-size:14px;color:var(--navy-dark);text-transform:uppercase;letter-spacing:.03em;}
   table.items{width:100%;border-collapse:collapse;font-size:13.5px;}
   table.items th{text-align:left;color:var(--muted);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--border);}
@@ -123,7 +124,10 @@
   <!-- LEFT: Catalog -->
   <div>
     <div class="card">
-      <h2 data-i18n="catalogTitle">Articles</h2>
+      <div class="card-header-row">
+        <h2 data-i18n="catalogTitle" style="border-bottom:none;padding-bottom:0;margin:0;">Articles</h2>
+        <button class="btn btn-light" onclick="openAddItem()" data-i18n="addItem">+ Ajouter un article</button>
+      </div>
       <div id="catalog"></div>
     </div>
   </div>
@@ -260,6 +264,10 @@
         <input id="stReceiptPrefix" placeholder="LDA">
       </div>
       <div class="field">
+        <label data-i18n="stStaffEmail">Email du personnel (pour l'envoi des reçus du jour)</label>
+        <input id="stStaffEmail" type="email" placeholder="personnel@example.com">
+      </div>
+      <div class="field">
         <label data-i18n="stLogo">Logo (image, facultatif)</label>
         <input id="stLogoFile" type="file" accept="image/*" onchange="handleLogoUpload(event)">
         <div style="margin-top:6px;">
@@ -283,8 +291,40 @@
     </div>
     <div class="modal-body" id="history"></div>
     <div class="modal-foot">
+      <button class="btn btn-gold" onclick="emailDayReceipts()" data-i18n="emailDay">Envoyer les reçus du jour</button>
       <button class="btn btn-light" onclick="exportCsv()" data-i18n="exportCsv">Exporter CSV</button>
       <button class="btn btn-light" onclick="closeModal('historyModal')" data-i18n="close">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ITEM MODAL -->
+<div class="modal-overlay hidden" id="addItemModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <strong data-i18n="addItemTitle">Ajouter un article</strong>
+      <button class="close-x" onclick="closeModal('addItemModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="row2">
+        <div class="field"><label data-i18n="itemNameFr">Nom (Français) *</label><input id="newItemFr"></div>
+        <div class="field"><label data-i18n="itemNameEn">Nom (Anglais)</label><input id="newItemEn"></div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label data-i18n="itemCategory">Catégorie</label>
+          <select id="newItemCat"></select>
+        </div>
+        <div class="field"><label data-i18n="itemPrice">Prix (€) *</label><input id="newItemPrice" type="number" min="0" step="0.01"></div>
+      </div>
+      <div class="field"><label data-i18n="itemNote">Note (facultatif)</label><input id="newItemNote"></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="addCustomItem()" data-i18n="add">Ajouter</button>
+
+      <h3 style="margin-top:18px;font-size:13px;color:var(--navy);text-transform:uppercase;" data-i18n="existingCustomItems">Articles personnalisés existants</h3>
+      <div id="customItemsList"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-light" onclick="closeModal('addItemModal')" data-i18n="close">Fermer</button>
     </div>
   </div>
 </div>
@@ -306,9 +346,11 @@ const ITEMS = [
   {id:'bed_pillowcase', cat:'bed', fr:"Taie d'oreiller", en:'Pillowcase', price:1.50},
   {id:'bed_protect1', cat:'bed', fr:'Protège-matelas 1p', en:'Mattress protector — single', price:4.40},
   {id:'bed_protect2', cat:'bed', fr:'Protège-matelas 2p', en:'Mattress protector — double', price:6.60},
+  {id:'bed_pillowprotect', cat:'bed', fr:'Protège oreiller', en:'Pillow protector', price:2.20},
 
   {id:'bath_towel', cat:'bath', fr:'Drap de bain', en:'Bath towel', price:2.10},
   {id:'bath_terry', cat:'bath', fr:'Serviette éponge', en:'Terry towel', price:1.90},
+  {id:'bath_hand', cat:'bath', fr:'Serviette de toilette', en:'Hand towel', price:1.90},
   {id:'bath_mat', cat:'bath', fr:'Tapis de bain', en:'Bath mat', price:2.50},
 
   {id:'table_cloth', cat:'table', fr:"Nappe (jusqu'à 12 couverts)", en:'Tablecloth (up to 12 settings)', price:8.50},
@@ -348,7 +390,8 @@ const CATS = [
   {key:'big', fr:'Grandes pièces', en:'Large items'},
   {key:'ski', fr:'Vêtements de montagne', en:'Mountain clothing'},
   {key:'weight', fr:'Lavé, séché & plié — au poids', en:'Washed, dried & folded — by weight'},
-  {key:'delivery', fr:'Livraison', en:'Delivery'}
+  {key:'delivery', fr:'Livraison', en:'Delivery'},
+  {key:'custom', fr:'Articles personnalisés', en:'Custom items'}
 ];
 
 const MIN_ORDER = 15.00;
@@ -385,7 +428,14 @@ const STRINGS = {
     emailLabel:'Email', addressLabel:'Adresse', siretLabel:'SIRET', vatNoLabel:'N° TVA',
     statusPaid:'Payé', statusUnpaid:'Non payé — à percevoir', statusCash:'Payé en espèces',
     statusCard:'Payé par carte bancaire', statusGift:'Payé par carte cadeau',
-    delete:'Supprimer', reprint:'Réimprimer', noHistory:'Aucune transaction enregistrée.'
+    delete:'Supprimer', reprint:'Réimprimer', noHistory:'Aucune transaction enregistrée.',
+    addItem:'+ Ajouter un article', addItemTitle:'Ajouter un article', itemNameFr:'Nom (Français) *',
+    itemNameEn:'Nom (Anglais)', itemCategory:'Catégorie', itemPrice:'Prix (€) *', itemNote:'Note (facultatif)',
+    add:'Ajouter', existingCustomItems:'Articles personnalisés existants', noCustomItems:'Aucun article personnalisé pour le moment.',
+    itemFillRequired:'Merci de renseigner un nom et un prix valide.', confirmDeleteItem:'Supprimer cet article ?',
+    stStaffEmail:'Email du personnel (pour l’envoi des reçus du jour)', emailDay:'Envoyer les reçus du jour',
+    noReceiptsToday:'Aucun reçu enregistré aujourd’hui.', noStaffEmail:'Merci de renseigner l’email du personnel dans les réglages.',
+    emailSubjectPrefix:'Reçus du jour —', emailIntro:'Récapitulatif des reçus du', emailGrandTotal:'Total du jour'
   },
   en:{
     appTitle:'Laverie des Anges — Checkout', history:'History', settings:'Settings',
@@ -416,7 +466,14 @@ const STRINGS = {
     emailLabel:'Email', addressLabel:'Address', siretLabel:'SIRET', vatNoLabel:'VAT no.',
     statusPaid:'Paid', statusUnpaid:'Unpaid — to be collected', statusCash:'Paid in cash',
     statusCard:'Paid by credit card', statusGift:'Paid by gift card',
-    delete:'Delete', reprint:'Reprint', noHistory:'No transaction recorded yet.'
+    delete:'Delete', reprint:'Reprint', noHistory:'No transaction recorded yet.',
+    addItem:'+ Add item', addItemTitle:'Add an item', itemNameFr:'Name (French) *',
+    itemNameEn:'Name (English)', itemCategory:'Category', itemPrice:'Price (€) *', itemNote:'Note (optional)',
+    add:'Add', existingCustomItems:'Existing custom items', noCustomItems:'No custom items yet.',
+    itemFillRequired:'Please enter a name and a valid price.', confirmDeleteItem:'Delete this item?',
+    stStaffEmail:'Staff email (for sending the day\'s receipts)', emailDay:'Email today\'s receipts',
+    noReceiptsToday:'No receipt recorded today.', noStaffEmail:'Please set the staff email in settings.',
+    emailSubjectPrefix:'Daily receipts —', emailIntro:'Summary of receipts for', emailGrandTotal:'Daily total'
   }
 };
 let lang = localStorage.getItem('lda_lang') || 'fr';
@@ -426,6 +483,13 @@ function t(key){ return (STRINGS[lang] && STRINGS[lang][key]) || key; }
 let cart = {}; // id -> qty
 let selectedPay = null;
 let settings = loadSettings();
+let customItems = loadCustomItems();
+
+function loadCustomItems(){
+  try{ return JSON.parse(localStorage.getItem('lda_custom_items') || '[]'); }catch(e){ return []; }
+}
+function saveCustomItems(){ localStorage.setItem('lda_custom_items', JSON.stringify(customItems)); }
+function getAllItems(){ return ITEMS.concat(customItems); }
 
 function loadSettings(){
   const def = {
@@ -433,7 +497,7 @@ function loadSettings(){
     address:'37 avenue du 159e RIA, 05100 Briançon',
     phone:'04 84 13 18 50',
     siret:'', legalForm:'', vatRegime:'exempt', vatRate:20,
-    vatNumber:'', receiptPrefix:'LDA', logo:''
+    vatNumber:'', receiptPrefix:'LDA', logo:'', staffEmail:''
   };
   try{
     const stored = JSON.parse(localStorage.getItem('lda_settings') || 'null');
@@ -457,7 +521,7 @@ function renderCatalog(){
   const el = document.getElementById('catalog');
   el.innerHTML = '';
   CATS.forEach(cat=>{
-    const items = ITEMS.filter(i=>i.cat===cat.key);
+    const items = getAllItems().filter(i=>i.cat===cat.key);
     if(!items.length) return;
     const wrap = document.createElement('div');
     wrap.className = 'category';
@@ -517,7 +581,7 @@ function fmt(n){
 function computeCart(){
   let lines = [];
   let subtotal = 0;
-  ITEMS.forEach(it=>{
+  getAllItems().forEach(it=>{
     const qty = cart[it.id] || 0;
     if(qty>0){
       const lineTotal = qty * it.price;
@@ -606,6 +670,7 @@ function openSettings(){
   document.getElementById('stVatRate').value = settings.vatRate;
   document.getElementById('stVatNumber').value = settings.vatNumber;
   document.getElementById('stReceiptPrefix').value = settings.receiptPrefix;
+  document.getElementById('stStaffEmail').value = settings.staffEmail;
   toggleVatRateField();
   document.getElementById('settingsModal').classList.remove('hidden');
 }
@@ -639,6 +704,7 @@ function saveSettings(){
   settings.vatRate = parseFloat(document.getElementById('stVatRate').value)||0;
   settings.vatNumber = document.getElementById('stVatNumber').value.trim();
   settings.receiptPrefix = document.getElementById('stReceiptPrefix').value.trim() || 'LDA';
+  settings.staffEmail = document.getElementById('stStaffEmail').value.trim();
   saveSettingsToStorage();
   document.getElementById('companyAddrTop').textContent = settings.address;
   closeModal('settingsModal');
@@ -843,6 +909,86 @@ function exportCsv(){
   a.href = url; a.download = 'laverie_des_anges_transactions.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ================= CUSTOM ITEMS ================= */
+function openAddItem(){
+  document.getElementById('newItemFr').value = '';
+  document.getElementById('newItemEn').value = '';
+  document.getElementById('newItemPrice').value = '';
+  document.getElementById('newItemNote').value = '';
+  const sel = document.getElementById('newItemCat');
+  sel.innerHTML = CATS.map(c=>`<option value="${c.key}">${lang==='fr'?c.fr:c.en}</option>`).join('');
+  sel.value = 'custom';
+  renderCustomItemsList();
+  document.getElementById('addItemModal').classList.remove('hidden');
+}
+function addCustomItem(){
+  const fr = document.getElementById('newItemFr').value.trim();
+  const en = document.getElementById('newItemEn').value.trim() || fr;
+  const cat = document.getElementById('newItemCat').value;
+  const price = parseFloat(document.getElementById('newItemPrice').value);
+  const note = document.getElementById('newItemNote').value.trim();
+  if(!fr || isNaN(price) || price < 0){
+    alert(t('itemFillRequired'));
+    return;
+  }
+  const id = 'custom_' + customItems.length + '_' + Math.floor(Math.random()*100000);
+  customItems.push({id, cat, fr, en, price, note_fr:note, note_en:note});
+  saveCustomItems();
+  document.getElementById('newItemFr').value = '';
+  document.getElementById('newItemEn').value = '';
+  document.getElementById('newItemPrice').value = '';
+  document.getElementById('newItemNote').value = '';
+  renderCustomItemsList();
+  renderCatalog();
+}
+function deleteCustomItem(id){
+  if(!confirm(t('confirmDeleteItem'))) return;
+  customItems = customItems.filter(i=>i.id!==id);
+  delete cart[id];
+  saveCustomItems();
+  renderCustomItemsList();
+  renderCatalog();
+  renderCart();
+}
+function renderCustomItemsList(){
+  const el = document.getElementById('customItemsList');
+  if(customItems.length===0){
+    el.innerHTML = `<p class="item-note">${t('noCustomItems')}</p>`;
+    return;
+  }
+  let html = '<table class="items"><tbody>';
+  customItems.forEach(it=>{
+    const name = lang==='fr' ? it.fr : it.en;
+    html += `<tr><td>${name}</td><td class="price-col">${fmt(it.price)}</td><td><button class="btn btn-light" onclick="deleteCustomItem('${it.id}')">&times;</button></td></tr>`;
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+/* ================= EMAIL DAY'S RECEIPTS ================= */
+function emailDayReceipts(){
+  const today = new Date().toISOString().slice(0,10);
+  const receipts = getReceipts().filter(r=>r.date===today);
+  if(receipts.length===0){
+    alert(t('noReceiptsToday'));
+    return;
+  }
+  if(!settings.staffEmail){
+    alert(t('noStaffEmail'));
+    return;
+  }
+  const payLabelMap = {cash:t('statusCash'), card:t('statusCard'), gift:t('statusGift'), unpaid:t('statusUnpaid')};
+  let grandTotal = 0;
+  const lines = receipts.map(r=>{
+    grandTotal += r.total;
+    return `${r.receiptNumber} — ${r.client.firstName} ${r.client.lastName} — ${fmt(r.total)} — ${payLabelMap[r.paymentMethod]}`;
+  });
+  const subject = `${t('emailSubjectPrefix')} ${today}`;
+  const body = `${t('emailIntro')} ${today} :\n\n${lines.join('\n')}\n\n${t('emailGrandTotal')}: ${fmt(grandTotal)}\n\n${settings.companyName}`;
+  const mailto = `mailto:${encodeURIComponent(settings.staffEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailto;
 }
 
 /* ================= MISC ================= */
