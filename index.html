@@ -45,7 +45,9 @@
   table.items td{padding:6px 6px;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   table.items input.qty{width:56px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;text-align:center;}
   .item-note{color:var(--muted);font-size:11.5px;}
-  .price-col{white-space:nowrap;text-align:right;font-weight:600;}
+  .price-col{white-space:nowrap;text-align:center;font-weight:600;}
+  .qty-col{text-align:center;}
+  table.items th.price-col, table.items th.qty-col{text-align:center;font-weight:600;}
   .toggle-row{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13.5px;}
   .cart-line{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;border-bottom:1px dashed #eee;}
   .cart-total{display:flex;justify-content:space-between;font-size:17px;font-weight:700;color:var(--navy);border-top:2px solid var(--gold);padding-top:8px;margin-top:8px;}
@@ -126,7 +128,7 @@
     <div class="card">
       <div class="card-header-row">
         <h2 data-i18n="catalogTitle" style="border-bottom:none;padding-bottom:0;margin:0;">Articles</h2>
-        <button class="btn btn-light" onclick="openAddItem()" data-i18n="addItem">+ Ajouter un article</button>
+        <button class="btn btn-light" onclick="openItemsEditor()" data-i18n="editItems">Modifier les articles</button>
       </div>
       <div id="catalog"></div>
     </div>
@@ -298,14 +300,15 @@
   </div>
 </div>
 
-<!-- ADD ITEM MODAL -->
+<!-- EDIT ITEMS MODAL -->
 <div class="modal-overlay hidden" id="addItemModal">
-  <div class="modal" style="max-width:560px;">
+  <div class="modal" style="max-width:640px;">
     <div class="modal-head">
-      <strong data-i18n="addItemTitle">Ajouter un article</strong>
+      <strong data-i18n="editItemsTitle">Modifier les articles</strong>
       <button class="close-x" onclick="closeModal('addItemModal')">&times;</button>
     </div>
     <div class="modal-body">
+      <h3 style="margin-top:0;font-size:13px;color:var(--navy);text-transform:uppercase;" data-i18n="addNewItem">Ajouter un nouvel article</h3>
       <div class="row2">
         <div class="field"><label data-i18n="itemNameFr">Nom (Français) *</label><input id="newItemFr"></div>
         <div class="field"><label data-i18n="itemNameEn">Nom (Anglais)</label><input id="newItemEn"></div>
@@ -320,8 +323,10 @@
       <div class="field"><label data-i18n="itemNote">Note (facultatif)</label><input id="newItemNote"></div>
       <button class="btn btn-primary" style="width:100%;" onclick="addCustomItem()" data-i18n="add">Ajouter</button>
 
-      <h3 style="margin-top:18px;font-size:13px;color:var(--navy);text-transform:uppercase;" data-i18n="existingCustomItems">Articles personnalisés existants</h3>
-      <div id="customItemsList"></div>
+      <h3 style="margin-top:20px;font-size:13px;color:var(--navy);text-transform:uppercase;" data-i18n="allItemsList">Tous les articles</h3>
+      <div class="item-note" data-i18n="editPriceHint">Modifiez un prix puis appuyez sur Entrée ou cliquez ailleurs pour l'enregistrer. Utilisez × pour supprimer un article.</div>
+      <div id="allItemsList" style="margin-top:8px;"></div>
+      <button class="btn btn-light" style="margin-top:10px;" onclick="restoreHiddenItems()" data-i18n="restoreHidden">Réafficher les articles masqués</button>
     </div>
     <div class="modal-foot">
       <button class="btn btn-light" onclick="closeModal('addItemModal')" data-i18n="close">Fermer</button>
@@ -335,7 +340,7 @@ const ITEMS = [
   {id:'rent_kit1', cat:'rental', fr:'Kit lit simple', en:'Single bed kit', note_fr:'housse, taie, drap', note_en:'duvet cover, pillowcase, sheet', price:16.40},
   {id:'rent_kit2', cat:'rental', fr:'Kit lit double', en:'Double bed kit', note_fr:'housse, 2 taies, drap', note_en:'duvet cover, 2 pillowcases, sheet', price:19.60},
   {id:'rent_towelkit', cat:'rental', fr:'Kit serviette', en:'Towel kit', note_fr:'drap de bain + serviette', note_en:'bath towel + hand towel', price:7.50},
-  {id:'rent_bathtowel', cat:'rental', fr:'Drap de bain (location)', en:'Bath towel (rental)', note_fr:'70×140', note_en:'70×140', price:5.00},
+  {id:'rent_bathtowel', cat:'rental', fr:'Drap de bain', en:'Bath towel', note_fr:'70×140', note_en:'70×140', price:5.00},
 
   {id:'bed_kit1', cat:'bed', fr:'Kit lit complet 1p', en:'Complete bed kit — single', note_fr:'housse, taie, drap — lavage', note_en:'cover, pillowcase, sheet — washing', price:10.00},
   {id:'bed_kit2', cat:'bed', fr:'Kit lit complet 2p', en:'Complete bed kit — double', note_fr:'housse, 2 taies, drap — lavage', note_en:'cover, 2 pillowcases, sheet — washing', price:12.40},
@@ -429,9 +434,11 @@ const STRINGS = {
     statusPaid:'Payé', statusUnpaid:'Non payé — à percevoir', statusCash:'Payé en espèces',
     statusCard:'Payé par carte bancaire', statusGift:'Payé par carte cadeau',
     delete:'Supprimer', reprint:'Réimprimer', noHistory:'Aucune transaction enregistrée.',
-    addItem:'+ Ajouter un article', addItemTitle:'Ajouter un article', itemNameFr:'Nom (Français) *',
+    editItems:'Modifier les articles', editItemsTitle:'Modifier les articles', itemNameFr:'Nom (Français) *',
     itemNameEn:'Nom (Anglais)', itemCategory:'Catégorie', itemPrice:'Prix (€) *', itemNote:'Note (facultatif)',
-    add:'Ajouter', existingCustomItems:'Articles personnalisés existants', noCustomItems:'Aucun article personnalisé pour le moment.',
+    add:'Ajouter', addNewItem:'Ajouter un nouvel article', allItemsList:'Tous les articles',
+    editPriceHint:"Modifiez un prix puis appuyez sur Entrée ou cliquez ailleurs pour l'enregistrer. Utilisez × pour supprimer un article.",
+    restoreHidden:'Réafficher les articles masqués',
     itemFillRequired:'Merci de renseigner un nom et un prix valide.', confirmDeleteItem:'Supprimer cet article ?',
     stStaffEmail:'Email du personnel (pour l’envoi des reçus du jour)', emailDay:'Envoyer les reçus du jour',
     noReceiptsToday:'Aucun reçu enregistré aujourd’hui.', noStaffEmail:'Merci de renseigner l’email du personnel dans les réglages.',
@@ -467,9 +474,11 @@ const STRINGS = {
     statusPaid:'Paid', statusUnpaid:'Unpaid — to be collected', statusCash:'Paid in cash',
     statusCard:'Paid by credit card', statusGift:'Paid by gift card',
     delete:'Delete', reprint:'Reprint', noHistory:'No transaction recorded yet.',
-    addItem:'+ Add item', addItemTitle:'Add an item', itemNameFr:'Name (French) *',
+    editItems:'Edit items', editItemsTitle:'Edit items', itemNameFr:'Name (French) *',
     itemNameEn:'Name (English)', itemCategory:'Category', itemPrice:'Price (€) *', itemNote:'Note (optional)',
-    add:'Add', existingCustomItems:'Existing custom items', noCustomItems:'No custom items yet.',
+    add:'Add', addNewItem:'Add a new item', allItemsList:'All items',
+    editPriceHint:'Edit a price then press Enter or click elsewhere to save it. Use × to delete an item.',
+    restoreHidden:'Restore hidden items',
     itemFillRequired:'Please enter a name and a valid price.', confirmDeleteItem:'Delete this item?',
     stStaffEmail:'Staff email (for sending the day\'s receipts)', emailDay:'Email today\'s receipts',
     noReceiptsToday:'No receipt recorded today.', noStaffEmail:'Please set the staff email in settings.',
@@ -484,12 +493,28 @@ let cart = {}; // id -> qty
 let selectedPay = null;
 let settings = loadSettings();
 let customItems = loadCustomItems();
+let priceOverrides = loadPriceOverrides();
+let hiddenItems = loadHiddenItems();
 
 function loadCustomItems(){
   try{ return JSON.parse(localStorage.getItem('lda_custom_items') || '[]'); }catch(e){ return []; }
 }
 function saveCustomItems(){ localStorage.setItem('lda_custom_items', JSON.stringify(customItems)); }
-function getAllItems(){ return ITEMS.concat(customItems); }
+function loadPriceOverrides(){
+  try{ return JSON.parse(localStorage.getItem('lda_price_overrides') || '{}'); }catch(e){ return {}; }
+}
+function savePriceOverrides(){ localStorage.setItem('lda_price_overrides', JSON.stringify(priceOverrides)); }
+function loadHiddenItems(){
+  try{ return JSON.parse(localStorage.getItem('lda_hidden_items') || '[]'); }catch(e){ return []; }
+}
+function saveHiddenItems(){ localStorage.setItem('lda_hidden_items', JSON.stringify(hiddenItems)); }
+
+function getAllItems(){
+  const builtIn = ITEMS.filter(i=>!hiddenItems.includes(i.id))
+    .map(i=> priceOverrides[i.id]!=null ? Object.assign({}, i, {price:priceOverrides[i.id]}) : i);
+  const custom = customItems.filter(i=>!hiddenItems.includes(i.id));
+  return builtIn.concat(custom);
+}
 
 function loadSettings(){
   const def = {
@@ -537,7 +562,7 @@ function renderCatalog(){
 
     const table = document.createElement('table');
     table.className = 'items';
-    table.innerHTML = `<thead><tr><th>${lang==='fr'?'Article':'Item'}</th><th class="price-col">${t('unitPrice')}</th><th>${t('qty')}</th></tr></thead>`;
+    table.innerHTML = `<thead><tr><th>${lang==='fr'?'Article':'Item'}</th><th class="price-col">${t('unitPrice')}</th><th class="qty-col">${t('qty')}</th></tr></thead>`;
     const tbody = document.createElement('tbody');
     items.forEach(it=>{
       const tr = document.createElement('tr');
@@ -546,7 +571,7 @@ function renderCatalog(){
       tr.innerHTML = `
         <td>${name}${note?`<div class="item-note">${note}</div>`:''}</td>
         <td class="price-col">${fmt(it.price)}</td>
-        <td><input type="number" min="0" step="1" class="qty" data-id="${it.id}" value="${cart[it.id]||0}"></td>
+        <td class="qty-col"><input type="number" min="0" step="1" class="qty" data-id="${it.id}" value="${cart[it.id]||0}"></td>
       `;
       tbody.appendChild(tr);
     });
@@ -911,8 +936,8 @@ function exportCsv(){
   URL.revokeObjectURL(url);
 }
 
-/* ================= CUSTOM ITEMS ================= */
-function openAddItem(){
+/* ================= ITEM EDITOR (add / edit price / delete) ================= */
+function openItemsEditor(){
   document.getElementById('newItemFr').value = '';
   document.getElementById('newItemEn').value = '';
   document.getElementById('newItemPrice').value = '';
@@ -920,7 +945,7 @@ function openAddItem(){
   const sel = document.getElementById('newItemCat');
   sel.innerHTML = CATS.map(c=>`<option value="${c.key}">${lang==='fr'?c.fr:c.en}</option>`).join('');
   sel.value = 'custom';
-  renderCustomItemsList();
+  renderAllItemsList();
   document.getElementById('addItemModal').classList.remove('hidden');
 }
 function addCustomItem(){
@@ -940,31 +965,65 @@ function addCustomItem(){
   document.getElementById('newItemEn').value = '';
   document.getElementById('newItemPrice').value = '';
   document.getElementById('newItemNote').value = '';
-  renderCustomItemsList();
+  renderAllItemsList();
   renderCatalog();
 }
-function deleteCustomItem(id){
-  if(!confirm(t('confirmDeleteItem'))) return;
-  customItems = customItems.filter(i=>i.id!==id);
-  delete cart[id];
-  saveCustomItems();
-  renderCustomItemsList();
+function setItemPrice(id, price){
+  const custom = customItems.find(i=>i.id===id);
+  if(custom){
+    custom.price = price;
+    saveCustomItems();
+  } else {
+    priceOverrides[id] = price;
+    savePriceOverrides();
+  }
   renderCatalog();
   renderCart();
 }
-function renderCustomItemsList(){
-  const el = document.getElementById('customItemsList');
-  if(customItems.length===0){
-    el.innerHTML = `<p class="item-note">${t('noCustomItems')}</p>`;
-    return;
+function deleteAnyItem(id){
+  if(!confirm(t('confirmDeleteItem'))) return;
+  const customIdx = customItems.findIndex(i=>i.id===id);
+  if(customIdx>=0){
+    customItems.splice(customIdx,1);
+    saveCustomItems();
+  } else {
+    if(!hiddenItems.includes(id)) hiddenItems.push(id);
+    saveHiddenItems();
   }
-  let html = '<table class="items"><tbody>';
-  customItems.forEach(it=>{
+  delete cart[id];
+  renderAllItemsList();
+  renderCatalog();
+  renderCart();
+}
+function restoreHiddenItems(){
+  hiddenItems = [];
+  saveHiddenItems();
+  renderAllItemsList();
+  renderCatalog();
+}
+function renderAllItemsList(){
+  const el = document.getElementById('allItemsList');
+  const items = getAllItems();
+  let html = '<table class="items"><thead><tr><th>'+(lang==='fr'?'Article':'Item')+'</th><th class="price-col">'+t('unitPrice')+'</th><th></th></tr></thead><tbody>';
+  items.forEach(it=>{
     const name = lang==='fr' ? it.fr : it.en;
-    html += `<tr><td>${name}</td><td class="price-col">${fmt(it.price)}</td><td><button class="btn btn-light" onclick="deleteCustomItem('${it.id}')">&times;</button></td></tr>`;
+    const catObj = CATS.find(c=>c.key===it.cat);
+    const catLabel = catObj ? (lang==='fr'?catObj.fr:catObj.en) : it.cat;
+    html += `<tr>
+      <td>${name}<div class="item-note">${catLabel}</div></td>
+      <td class="price-col"><input type="number" min="0" step="0.01" class="edit-price-input" data-id="${it.id}" value="${it.price}" style="width:80px;text-align:center;"></td>
+      <td><button class="btn btn-light" onclick="deleteAnyItem('${it.id}')">&times;</button></td>
+    </tr>`;
   });
   html += '</tbody></table>';
   el.innerHTML = html;
+  el.querySelectorAll('.edit-price-input').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const newPrice = parseFloat(inp.value);
+      if(isNaN(newPrice) || newPrice < 0) return;
+      setItemPrice(inp.dataset.id, newPrice);
+    });
+  });
 }
 
 /* ================= EMAIL DAY'S RECEIPTS ================= */

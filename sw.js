@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lda-caisse-v2';
+const CACHE_NAME = 'lda-caisse-v3';
 const ASSETS = ['./', './index.html', './manifest.json', './logo.svg'];
 
 self.addEventListener('install', (event) => {
