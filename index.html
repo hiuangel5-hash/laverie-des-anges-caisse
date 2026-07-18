@@ -166,7 +166,7 @@
           <input id="cLastName" type="text">
         </div>
         <div class="field">
-          <label data-i18n="firstName">Prénom *</label>
+          <label data-i18n="firstName">Prénom</label>
           <input id="cFirstName" type="text">
         </div>
       </div>
@@ -268,6 +268,21 @@
       <div class="field">
         <label data-i18n="stStaffEmail">Email du personnel (pour l'envoi des reçus du jour)</label>
         <input id="stStaffEmail" type="email" placeholder="personnel@example.com">
+      </div>
+      <div class="field">
+        <label data-i18n="stDeviceCode">Code appareil (si plusieurs appareils — ex. M pour mobile)</label>
+        <input id="stDeviceCode" maxlength="4" placeholder="">
+      </div>
+      <div class="field">
+        <label data-i18n="stBackup">Sauvegarde des données (reçus, articles, réglages)</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-light" onclick="exportBackup()" data-i18n="backupExport">Exporter la sauvegarde</button>
+          <label class="btn btn-light" style="margin:0;">
+            <span data-i18n="backupImport">Importer une sauvegarde</span>
+            <input type="file" accept=".json,application/json" style="display:none;" onchange="importBackup(event)">
+          </label>
+        </div>
+        <div class="item-note" style="margin-top:4px;" data-i18n="backupHint">Exportez régulièrement : l'historique est stocké dans ce navigateur et peut être perdu si ses données sont effacées.</div>
       </div>
       <div class="field">
         <label data-i18n="stLogo">Logo (image, facultatif)</label>
@@ -408,7 +423,7 @@ const STRINGS = {
     appTitle:'Laverie des Anges — Caisse', history:'Historique', settings:'Réglages',
     catalogTitle:'Articles', orderSummary:'Résumé de la commande', noItems:'Aucun article sélectionné.',
     discountLabel:'Remise', totalDue:'Total à payer', clientInfo:'Informations client',
-    lastName:'Nom *', firstName:'Prénom *', phone:'Téléphone *', email:'Email (facultatif — pour e-reçu)',
+    lastName:'Nom *', firstName:'Prénom', phone:'Téléphone *', email:'Email (facultatif — pour e-reçu)',
     address:'Adresse (facultatif — e-reçu / livraison payante)', txDate:'Date de la transaction',
     payment:'Paiement', payCash:'Espèces', payCard:'Carte bancaire', payGift:'Carte cadeau', payUnpaid:'Non payé (à percevoir)',
     giftCode:'Code / N° de la carte cadeau', generateReceipt:'Générer le reçu',
@@ -424,7 +439,7 @@ const STRINGS = {
     urgent:'Urgence 24h (+50%)', qty:'Qté', unitPrice:'Prix unitaire', lineTotal:'Total',
     subtotal:'Sous-total', discountApplied:'Remise', minOrderApplied:'Montant minimum de commande (15,00 €) appliqué',
     urgentSurchargeLabel:'Majoration urgence 24h (+50%)',
-    fillRequired:'Merci de renseigner le nom, le prénom et le téléphone du client, et de sélectionner au moins un article.',
+    fillRequired:'Merci de renseigner le nom et le téléphone du client, et de sélectionner au moins un article.',
     receiptNo:'Reçu n°', dateLabel:'Date', client:'Client', description:'Désignation', qtyShort:'Qté',
     unitHT:'PU HT', vatRate:'TVA', unitTTC:'PU TTC', total:'Total TTC', totalHT:'Total HT', totalVAT:'Total TVA',
     totalTTC:'Total TTC', amountPaid:'Montant payé', balanceDue:'Solde restant dû', paymentMethod:'Mode de règlement',
@@ -442,13 +457,24 @@ const STRINGS = {
     itemFillRequired:'Merci de renseigner un nom et un prix valide.', confirmDeleteItem:'Supprimer cet article ?',
     stStaffEmail:'Email du personnel (pour l’envoi des reçus du jour)', emailDay:'Envoyer les reçus du jour',
     noReceiptsToday:'Aucun reçu enregistré aujourd’hui.', noStaffEmail:'Merci de renseigner l’email du personnel dans les réglages.',
-    emailSubjectPrefix:'Reçus du jour —', emailIntro:'Récapitulatif des reçus du', emailGrandTotal:'Total du jour'
+    emailSubjectPrefix:'Reçus du jour —', emailIntro:'Récapitulatif des reçus du', emailGrandTotal:'Total du jour',
+    emailByMethod:'Détail par mode de règlement',
+    stDeviceCode:'Code appareil (si plusieurs appareils — ex. M pour mobile)',
+    stBackup:'Sauvegarde des données (reçus, articles, réglages)',
+    backupExport:'Exporter la sauvegarde', backupImport:'Importer une sauvegarde',
+    backupHint:"Exportez régulièrement : l'historique est stocké dans ce navigateur et peut être perdu si ses données sont effacées.",
+    backupImported:'Sauvegarde importée avec succès. La page va se recharger.',
+    backupInvalid:'Fichier de sauvegarde invalide.',
+    backupConfirmImport:'Importer cette sauvegarde remplacera les données actuelles de cet appareil. Continuer ?',
+    markPaid:'Marquer payé…', settledOn:'Réglé le', reissue:'Rééditer',
+    reissueConfirm:'Créer un nouveau reçu daté d’aujourd’hui pour cette même commande ? L’original sera marqué comme remplacé.',
+    replacesReceipt:'Annule et remplace le reçu n°', replacedBy:'Remplacé par le reçu n°'
   },
   en:{
     appTitle:'Laverie des Anges — Checkout', history:'History', settings:'Settings',
     catalogTitle:'Items', orderSummary:'Order summary', noItems:'No item selected.',
     discountLabel:'Discount', totalDue:'Total due', clientInfo:'Client information',
-    lastName:'Last name *', firstName:'First name *', phone:'Phone *', email:'Email (optional — for e-receipt)',
+    lastName:'Last name *', firstName:'First name', phone:'Phone *', email:'Email (optional — for e-receipt)',
     address:'Address (optional — e-receipt / paid delivery)', txDate:'Transaction date',
     payment:'Payment', payCash:'Cash', payCard:'Credit card', payGift:'Gift card', payUnpaid:'Not paid (to be collected)',
     giftCode:'Gift card code / number', generateReceipt:'Generate receipt',
@@ -464,7 +490,7 @@ const STRINGS = {
     urgent:'24h express (+50%)', qty:'Qty', unitPrice:'Unit price', lineTotal:'Total',
     subtotal:'Subtotal', discountApplied:'Discount', minOrderApplied:'Minimum order amount (€15.00) applied',
     urgentSurchargeLabel:'24h express surcharge (+50%)',
-    fillRequired:'Please fill in the client last name, first name and phone number, and select at least one item.',
+    fillRequired:'Please fill in the client last name and phone number, and select at least one item.',
     receiptNo:'Receipt no.', dateLabel:'Date', client:'Client', description:'Description', qtyShort:'Qty',
     unitHT:'Unit excl. VAT', vatRate:'VAT', unitTTC:'Unit incl. VAT', total:'Total incl. VAT', totalHT:'Total excl. VAT', totalVAT:'Total VAT',
     totalTTC:'Total incl. VAT', amountPaid:'Amount paid', balanceDue:'Balance due', paymentMethod:'Payment method',
@@ -482,7 +508,18 @@ const STRINGS = {
     itemFillRequired:'Please enter a name and a valid price.', confirmDeleteItem:'Delete this item?',
     stStaffEmail:'Staff email (for sending the day\'s receipts)', emailDay:'Email today\'s receipts',
     noReceiptsToday:'No receipt recorded today.', noStaffEmail:'Please set the staff email in settings.',
-    emailSubjectPrefix:'Daily receipts —', emailIntro:'Summary of receipts for', emailGrandTotal:'Daily total'
+    emailSubjectPrefix:'Daily receipts —', emailIntro:'Summary of receipts for', emailGrandTotal:'Daily total',
+    emailByMethod:'Breakdown by payment method',
+    stDeviceCode:'Device code (if using several devices — e.g. M for mobile)',
+    stBackup:'Data backup (receipts, items, settings)',
+    backupExport:'Export backup', backupImport:'Import backup',
+    backupHint:'Export regularly: history is stored in this browser and can be lost if its data is cleared.',
+    backupImported:'Backup imported successfully. The page will reload.',
+    backupInvalid:'Invalid backup file.',
+    backupConfirmImport:'Importing this backup will replace the current data on this device. Continue?',
+    markPaid:'Mark paid…', settledOn:'Settled on', reissue:'Reissue',
+    reissueConfirm:'Create a new receipt dated today for this same order? The original will be marked as replaced.',
+    replacesReceipt:'Cancels and replaces receipt no.', replacedBy:'Replaced by receipt no.'
   }
 };
 let lang = localStorage.getItem('lda_lang') || 'fr';
@@ -521,8 +558,8 @@ function loadSettings(){
     companyName:'Laverie des Anges',
     address:'37 avenue du 159e RIA, 05100 Briançon',
     phone:'04 84 13 18 50',
-    siret:'', legalForm:'', vatRegime:'exempt', vatRate:20,
-    vatNumber:'', receiptPrefix:'LDA', logo:'', staffEmail:''
+    siret:'', legalForm:'', vatRegime:'applicable', vatRate:20,
+    vatNumber:'', receiptPrefix:'LDA', logo:'', staffEmail:'', deviceCode:''
   };
   try{
     const stored = JSON.parse(localStorage.getItem('lda_settings') || 'null');
@@ -538,7 +575,8 @@ function nextReceiptNumber(){
   let counters = JSON.parse(localStorage.getItem('lda_counters') || '{}');
   counters[year] = (counters[year] || 0) + 1;
   localStorage.setItem('lda_counters', JSON.stringify(counters));
-  return `${settings.receiptPrefix || 'LDA'}-${year}-${String(counters[year]).padStart(4,'0')}`;
+  const dev = (settings.deviceCode || '').trim().toUpperCase();
+  return `${settings.receiptPrefix || 'LDA'}${dev ? '-'+dev : ''}-${year}-${String(counters[year]).padStart(4,'0')}`;
 }
 
 /* ================= RENDER CATALOG ================= */
@@ -696,6 +734,7 @@ function openSettings(){
   document.getElementById('stVatNumber').value = settings.vatNumber;
   document.getElementById('stReceiptPrefix').value = settings.receiptPrefix;
   document.getElementById('stStaffEmail').value = settings.staffEmail;
+  document.getElementById('stDeviceCode').value = settings.deviceCode || '';
   toggleVatRateField();
   document.getElementById('settingsModal').classList.remove('hidden');
 }
@@ -730,6 +769,7 @@ function saveSettings(){
   settings.vatNumber = document.getElementById('stVatNumber').value.trim();
   settings.receiptPrefix = document.getElementById('stReceiptPrefix').value.trim() || 'LDA';
   settings.staffEmail = document.getElementById('stStaffEmail').value.trim();
+  settings.deviceCode = document.getElementById('stDeviceCode').value.trim().toUpperCase();
   saveSettingsToStorage();
   document.getElementById('companyAddrTop').textContent = settings.address;
   closeModal('settingsModal');
@@ -745,7 +785,7 @@ function generateReceipt(){
   const address = document.getElementById('cAddress').value.trim();
   const date = document.getElementById('cDate').value || new Date().toISOString().slice(0,10);
 
-  if(!lastName || !firstName || !phone || c.lines.length===0 || !selectedPay){
+  if(!lastName || !phone || c.lines.length===0 || !selectedPay){
     alert(t('fillRequired') + (selectedPay ? '' : ' ('+t('payment')+')'));
     return;
   }
@@ -846,12 +886,13 @@ function renderReceiptHTML(r){
       <div class="r-meta">
         <div class="rnum">${t('receiptNo')} ${r.receiptNumber}</div>
         <div>${t('dateLabel')}: ${r.date}</div>
+        ${r.replaces ? `<div>${t('replacesReceipt')} ${r.replaces}</div>` : ''}
       </div>
     </div>
 
     <h3>${t('client')}</h3>
     <div class="r-client">
-      ${r.client.firstName} ${r.client.lastName}<br>
+      ${[r.client.firstName, r.client.lastName].filter(Boolean).join(' ')}<br>
       ${t('phoneLabel')}: ${r.client.phone}<br>
       ${r.client.email ? t('emailLabel')+': '+r.client.email+'<br>' : ''}
       ${r.client.address ? t('addressLabel')+': '+r.client.address+'<br>' : ''}
@@ -877,7 +918,7 @@ function renderReceiptHTML(r){
     </div>
 
     <h3>${t('paymentMethod')}</h3>
-    <div>${payLabelMap[r.paymentMethod]}</div>
+    <div>${payLabelMap[r.paymentMethod]}${r.settledDate ? ` — ${t('settledOn')} ${r.settledDate}` : ''}</div>
     ${payExtraHtml}
 
     <div class="r-legal">
@@ -900,12 +941,30 @@ function openHistory(){
     receipts.forEach(r=>{
       const badgeClass = {cash:'badge-cash',card:'badge-card',gift:'badge-gift',unpaid:'badge-unpaid'}[r.paymentMethod];
       const payLabelMap = {cash:t('statusCash'), card:t('statusCard'), gift:t('statusGift'), unpaid:t('statusUnpaid')};
+      let payCell = `<span class="badge ${badgeClass}">${payLabelMap[r.paymentMethod]}</span>`;
+      if(r.settledDate){
+        payCell += `<div class="item-note">${t('settledOn')} ${r.settledDate}</div>`;
+      }
+      if(r.paymentMethod==='unpaid'){
+        payCell += `<div><select onchange="if(this.value)settleReceipt('${r.receiptNumber}', this.value)" style="margin-top:4px;font-size:12px;">
+          <option value="">${t('markPaid')}</option>
+          <option value="cash">${t('payCash')}</option>
+          <option value="card">${t('payCard')}</option>
+          <option value="gift">${t('payGift')}</option>
+        </select></div>`;
+      }
+      let numCell = r.receiptNumber;
+      if(r.replacedBy) numCell += `<div class="item-note">${t('replacedBy')} ${r.replacedBy}</div>`;
+      if(r.replaces) numCell += `<div class="item-note">${t('replacesReceipt')} ${r.replaces}</div>`;
       html += `<tr>
-        <td>${r.receiptNumber}</td><td>${r.date}</td>
-        <td>${r.client.firstName} ${r.client.lastName}</td>
+        <td>${numCell}</td><td>${r.date}</td>
+        <td>${[r.client.firstName, r.client.lastName].filter(Boolean).join(' ')}</td>
         <td>${fmt(r.total)}</td>
-        <td><span class="badge ${badgeClass}">${payLabelMap[r.paymentMethod]}</span></td>
-        <td><button class="btn btn-light" onclick="reprint('${r.receiptNumber}')">${t('reprint')}</button></td>
+        <td>${payCell}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-light" onclick="reprint('${r.receiptNumber}')">${t('reprint')}</button>
+          ${r.replacedBy ? '' : `<button class="btn btn-light" onclick="reissueReceipt('${r.receiptNumber}')">${t('reissue')}</button>`}
+        </td>
       </tr>`;
     });
     html += '</tbody></table>';
@@ -919,6 +978,70 @@ function reprint(receiptNumber){
   renderReceiptHTML(r);
   closeModal('historyModal');
   document.getElementById('receiptModal').classList.remove('hidden');
+}
+function settleReceipt(receiptNumber, method){
+  const receipts = getReceipts();
+  const r = receipts.find(x=>x.receiptNumber===receiptNumber);
+  if(!r || r.paymentMethod!=='unpaid') return;
+  r.paymentMethod = method;
+  r.amountPaid = r.total;
+  r.balanceDue = 0;
+  r.originallyUnpaid = true;
+  r.settledDate = new Date().toISOString().slice(0,10);
+  saveReceipts(receipts);
+  openHistory();
+}
+function reissueReceipt(receiptNumber){
+  if(!confirm(t('reissueConfirm'))) return;
+  const receipts = getReceipts();
+  const orig = receipts.find(x=>x.receiptNumber===receiptNumber);
+  if(!orig) return;
+  const newNumber = nextReceiptNumber();
+  const copy = JSON.parse(JSON.stringify(orig));
+  copy.receiptNumber = newNumber;
+  copy.date = new Date().toISOString().slice(0,10);
+  copy.issuedAt = copy.date;
+  copy.replaces = orig.receiptNumber;
+  delete copy.replacedBy;
+  orig.replacedBy = newNumber;
+  receipts.push(copy);
+  saveReceipts(receipts);
+  renderReceiptHTML(copy);
+  closeModal('historyModal');
+  document.getElementById('receiptModal').classList.remove('hidden');
+}
+
+/* ================= BACKUP / RESTORE ================= */
+const BACKUP_KEYS = ['lda_settings','lda_receipts','lda_counters','lda_custom_items','lda_price_overrides','lda_hidden_items','lda_lang'];
+function exportBackup(){
+  const data = {app:'laverie-des-anges-caisse', exportedAt:new Date().toISOString()};
+  BACKUP_KEYS.forEach(k=>{ data[k] = localStorage.getItem(k); });
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'laverie_des_anges_sauvegarde_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importBackup(evt){
+  const file = evt.target.files[0];
+  evt.target.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const data = JSON.parse(e.target.result);
+      if(data.app !== 'laverie-des-anges-caisse'){ alert(t('backupInvalid')); return; }
+      if(!confirm(t('backupConfirmImport'))) return;
+      BACKUP_KEYS.forEach(k=>{
+        if(data[k] != null) localStorage.setItem(k, data[k]);
+      });
+      alert(t('backupImported'));
+      location.reload();
+    }catch(err){ alert(t('backupInvalid')); }
+  };
+  reader.readAsText(file);
 }
 function exportCsv(){
   const receipts = getReceipts();
@@ -1040,14 +1163,42 @@ function emailDayReceipts(){
   }
   const payLabelMap = {cash:t('statusCash'), card:t('statusCard'), gift:t('statusGift'), unpaid:t('statusUnpaid')};
   let grandTotal = 0;
+  const byMethod = {};
   const lines = receipts.map(r=>{
     grandTotal += r.total;
-    return `${r.receiptNumber} — ${r.client.firstName} ${r.client.lastName} — ${fmt(r.total)} — ${payLabelMap[r.paymentMethod]}`;
+    byMethod[r.paymentMethod] = (byMethod[r.paymentMethod] || 0) + r.total;
+    return `${r.receiptNumber} — ${[r.client.firstName, r.client.lastName].filter(Boolean).join(' ')} — ${fmt(r.total)} — ${payLabelMap[r.paymentMethod]}`;
   });
+  const methodLines = ['cash','card','gift','unpaid']
+    .filter(m=>byMethod[m])
+    .map(m=>`${payLabelMap[m]}: ${fmt(byMethod[m])}`);
   const subject = `${t('emailSubjectPrefix')} ${today}`;
-  const body = `${t('emailIntro')} ${today} :\n\n${lines.join('\n')}\n\n${t('emailGrandTotal')}: ${fmt(grandTotal)}\n\n${settings.companyName}`;
+  const body = `${t('emailIntro')} ${today} :\n\n${lines.join('\n')}\n\n${t('emailByMethod')} :\n${methodLines.join('\n')}\n\n${t('emailGrandTotal')}: ${fmt(grandTotal)}\n\n${settings.companyName}`;
   const mailto = `mailto:${encodeURIComponent(settings.staffEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.location.href = mailto;
+}
+
+/* ================= CLIENT AUTOFILL ================= */
+function normalizePhone(p){ return (p||'').replace(/[^0-9+]/g,''); }
+function autofillClient(){
+  const raw = document.getElementById('cPhone').value;
+  const phone = normalizePhone(raw);
+  if(phone.length < 9) return;
+  const receipts = getReceipts();
+  for(let i = receipts.length - 1; i >= 0; i--){
+    const r = receipts[i];
+    if(normalizePhone(r.client.phone) === phone){
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if(el && !el.value.trim() && val) el.value = val;
+      };
+      set('cLastName', r.client.lastName);
+      set('cFirstName', r.client.firstName);
+      set('cEmail', r.client.email);
+      set('cAddress', r.client.address);
+      return;
+    }
+  }
 }
 
 /* ================= MISC ================= */
@@ -1070,6 +1221,8 @@ function setLang(l){
 /* ================= INIT ================= */
 document.getElementById('discountType').addEventListener('change', renderCart);
 document.getElementById('discountValue').addEventListener('input', renderCart);
+document.getElementById('cPhone').addEventListener('input', autofillClient);
+document.getElementById('cPhone').addEventListener('blur', autofillClient);
 
 applyLogo();
 setDefaultDate();
