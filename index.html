@@ -273,6 +273,16 @@
         <label data-i18n="stDeviceCode">Code appareil (si plusieurs appareils — ex. M pour mobile)</label>
         <input id="stDeviceCode" maxlength="4" placeholder="">
       </div>
+      <div class="row2">
+        <div class="field">
+          <label data-i18n="stSyncUrl">URL de synchronisation Google (facultatif — voir guide)</label>
+          <input id="stSyncUrl" placeholder="https://script.google.com/macros/s/…/exec">
+        </div>
+        <div class="field">
+          <label data-i18n="stSyncToken">Jeton de synchronisation (identique au script)</label>
+          <input id="stSyncToken">
+        </div>
+      </div>
       <div class="field">
         <label data-i18n="stBackup">Sauvegarde des données (reçus, articles, réglages)</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -466,6 +476,8 @@ const STRINGS = {
     backupImported:'Sauvegarde importée avec succès. La page va se recharger.',
     backupInvalid:'Fichier de sauvegarde invalide.',
     backupConfirmImport:'Importer cette sauvegarde remplacera les données actuelles de cet appareil. Continuer ?',
+    stSyncUrl:'URL de synchronisation Google (facultatif — voir guide)',
+    stSyncToken:'Jeton de synchronisation (identique au script)',
     markPaid:'Marquer payé…', settledOn:'Réglé le', reissue:'Rééditer',
     reissueConfirm:'Créer un nouveau reçu daté d’aujourd’hui pour cette même commande ? L’original sera marqué comme remplacé.',
     replacesReceipt:'Annule et remplace le reçu n°', replacedBy:'Remplacé par le reçu n°'
@@ -517,6 +529,8 @@ const STRINGS = {
     backupImported:'Backup imported successfully. The page will reload.',
     backupInvalid:'Invalid backup file.',
     backupConfirmImport:'Importing this backup will replace the current data on this device. Continue?',
+    stSyncUrl:'Google sync URL (optional — see guide)',
+    stSyncToken:'Sync token (same as in the script)',
     markPaid:'Mark paid…', settledOn:'Settled on', reissue:'Reissue',
     reissueConfirm:'Create a new receipt dated today for this same order? The original will be marked as replaced.',
     replacesReceipt:'Cancels and replaces receipt no.', replacedBy:'Replaced by receipt no.'
@@ -559,7 +573,8 @@ function loadSettings(){
     address:'37 avenue du 159e RIA, 05100 Briançon',
     phone:'04 84 13 18 50',
     siret:'', legalForm:'', vatRegime:'applicable', vatRate:20,
-    vatNumber:'', receiptPrefix:'LDA', logo:'', staffEmail:'', deviceCode:''
+    vatNumber:'', receiptPrefix:'LDA', logo:'', staffEmail:'', deviceCode:'',
+    syncUrl:'', syncToken:''
   };
   try{
     const stored = JSON.parse(localStorage.getItem('lda_settings') || 'null');
@@ -735,6 +750,8 @@ function openSettings(){
   document.getElementById('stReceiptPrefix').value = settings.receiptPrefix;
   document.getElementById('stStaffEmail').value = settings.staffEmail;
   document.getElementById('stDeviceCode').value = settings.deviceCode || '';
+  document.getElementById('stSyncUrl').value = settings.syncUrl || '';
+  document.getElementById('stSyncToken').value = settings.syncToken || '';
   toggleVatRateField();
   document.getElementById('settingsModal').classList.remove('hidden');
 }
@@ -770,7 +787,10 @@ function saveSettings(){
   settings.receiptPrefix = document.getElementById('stReceiptPrefix').value.trim() || 'LDA';
   settings.staffEmail = document.getElementById('stStaffEmail').value.trim();
   settings.deviceCode = document.getElementById('stDeviceCode').value.trim().toUpperCase();
+  settings.syncUrl = document.getElementById('stSyncUrl').value.trim();
+  settings.syncToken = document.getElementById('stSyncToken').value.trim();
   saveSettingsToStorage();
+  flushSyncQueue();
   document.getElementById('companyAddrTop').textContent = settings.address;
   closeModal('settingsModal');
 }
@@ -812,6 +832,7 @@ function generateReceipt(){
   const receipts = getReceipts();
   receipts.push(record);
   saveReceipts(receipts);
+  queueSync(record);
 
   renderReceiptHTML(record);
   document.getElementById('receiptModal').classList.remove('hidden');
@@ -989,6 +1010,7 @@ function settleReceipt(receiptNumber, method){
   r.originallyUnpaid = true;
   r.settledDate = new Date().toISOString().slice(0,10);
   saveReceipts(receipts);
+  queueSync(r);
   openHistory();
 }
 function reissueReceipt(receiptNumber){
@@ -1006,6 +1028,8 @@ function reissueReceipt(receiptNumber){
   orig.replacedBy = newNumber;
   receipts.push(copy);
   saveReceipts(receipts);
+  queueSync(orig);
+  queueSync(copy);
   renderReceiptHTML(copy);
   closeModal('historyModal');
   document.getElementById('receiptModal').classList.remove('hidden');
@@ -1043,13 +1067,14 @@ function importBackup(evt){
   };
   reader.readAsText(file);
 }
+function csvNum(v){ return v.toFixed(2).replace('.', ','); }
 function exportCsv(){
   const receipts = getReceipts();
   let csv = 'Receipt No;Date;Last Name;First Name;Phone;Email;Address;Subtotal;Urgent Surcharge;Discount;Total TTC;Amount Paid;Balance Due;Payment Method\n';
   receipts.forEach(r=>{
     csv += [r.receiptNumber, r.date, r.client.lastName, r.client.firstName, r.client.phone, r.client.email, r.client.address,
-      r.subtotal.toFixed(2), r.urgentSurcharge.toFixed(2), r.discountAmount.toFixed(2), r.total.toFixed(2),
-      r.amountPaid.toFixed(2), r.balanceDue.toFixed(2), r.paymentMethod].join(';') + '\n';
+      csvNum(r.subtotal), csvNum(r.urgentSurcharge), csvNum(r.discountAmount), csvNum(r.total),
+      csvNum(r.amountPaid), csvNum(r.balanceDue), r.paymentMethod].join(';') + '\n';
   });
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
@@ -1178,6 +1203,46 @@ function emailDayReceipts(){
   window.location.href = mailto;
 }
 
+/* ================= GOOGLE SHEET SYNC (optional) ================= */
+function getSyncQueue(){
+  try{ return JSON.parse(localStorage.getItem('lda_sync_queue') || '[]'); }catch(e){ return []; }
+}
+function saveSyncQueue(q){ localStorage.setItem('lda_sync_queue', JSON.stringify(q)); }
+function queueSync(receipt){
+  if(!settings.syncUrl) return;
+  const q = getSyncQueue();
+  // keep only the latest version of each receipt in the queue
+  const idx = q.findIndex(x=>x.receipt.receiptNumber===receipt.receiptNumber);
+  const entry = {type:'upsert', receipt:JSON.parse(JSON.stringify(receipt)), queuedAt:new Date().toISOString()};
+  if(idx>=0) q[idx] = entry; else q.push(entry);
+  saveSyncQueue(q);
+  flushSyncQueue();
+}
+let _syncFlushing = false;
+async function flushSyncQueue(){
+  if(_syncFlushing || !settings.syncUrl) return;
+  let q = getSyncQueue();
+  if(q.length===0) return;
+  _syncFlushing = true;
+  try{
+    while(q.length>0){
+      const item = q[0];
+      // Apps Script web apps don't send CORS headers, so we use no-cors:
+      // a resolved fetch means the request reached Google; a rejected one
+      // (offline) keeps the item queued for the next attempt.
+      await fetch(settings.syncUrl, {
+        method:'POST',
+        mode:'no-cors',
+        headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({token:settings.syncToken, type:item.type, receipt:item.receipt})
+      });
+      q.shift();
+      saveSyncQueue(q);
+    }
+  }catch(e){ /* offline or unreachable — retry later */ }
+  _syncFlushing = false;
+}
+
 /* ================= CLIENT AUTOFILL ================= */
 function normalizePhone(p){ return (p||'').replace(/[^0-9+]/g,''); }
 function autofillClient(){
@@ -1223,6 +1288,8 @@ document.getElementById('discountType').addEventListener('change', renderCart);
 document.getElementById('discountValue').addEventListener('input', renderCart);
 document.getElementById('cPhone').addEventListener('input', autofillClient);
 document.getElementById('cPhone').addEventListener('blur', autofillClient);
+window.addEventListener('online', flushSyncQueue);
+flushSyncQueue();
 
 applyLogo();
 setDefaultDate();
