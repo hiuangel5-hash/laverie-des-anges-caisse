@@ -122,6 +122,11 @@
   </div>
 </header>
 
+<div id="backupBanner" class="warn hidden" style="max-width:1200px;margin:14px auto 0;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+  <span id="backupBannerText"></span>
+  <button class="btn btn-light" onclick="dismissBackupBanner()">OK</button>
+</div>
+
 <main>
   <!-- LEFT: Catalog -->
   <div>
@@ -319,8 +324,29 @@
     <div class="modal-body" id="history"></div>
     <div class="modal-foot">
       <button class="btn btn-gold" onclick="emailDayReceipts()" data-i18n="emailDay">Envoyer les reçus du jour</button>
+      <button class="btn btn-light" onclick="openReport()" data-i18n="monthlyReport">Rapport mensuel</button>
       <button class="btn btn-light" onclick="exportCsv()" data-i18n="exportCsv">Exporter CSV</button>
       <button class="btn btn-light" onclick="closeModal('historyModal')" data-i18n="close">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MONTHLY REPORT MODAL -->
+<div class="modal-overlay hidden" id="reportModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <strong data-i18n="reportTitle">Rapport mensuel (TVA)</strong>
+      <button class="close-x" onclick="closeModal('reportModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label data-i18n="reportMonth">Mois</label>
+        <input type="month" id="reportMonth" onchange="renderReport()">
+      </div>
+      <div id="reportContent"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-light" onclick="closeModal('reportModal')" data-i18n="close">Fermer</button>
     </div>
   </div>
 </div>
@@ -480,7 +506,13 @@ const STRINGS = {
     stSyncToken:'Jeton de synchronisation (identique au script)',
     markPaid:'Marquer payé…', settledOn:'Réglé le', reissue:'Rééditer',
     reissueConfirm:'Créer un nouveau reçu daté d’aujourd’hui pour cette même commande ? L’original sera marqué comme remplacé.',
-    replacesReceipt:'Annule et remplace le reçu n°', replacedBy:'Remplacé par le reçu n°'
+    replacesReceipt:'Annule et remplace le reçu n°', replacedBy:'Remplacé par le reçu n°',
+    searchPlaceholder:'Rechercher (nom, téléphone, n° de reçu…)', clearFilter:'Effacer',
+    monthlyReport:'Rapport mensuel', reportTitle:'Rapport mensuel (TVA)', reportMonth:'Mois',
+    reportCount:'Nombre de reçus', reportUnpaid:'dont non payé (à percevoir)',
+    reportExcluded:'Les reçus remplacés (« annule et remplace ») sont exclus du rapport.',
+    backupReminderNever:'Aucune sauvegarde exportée pour le moment — pensez-y : Réglages → Exporter la sauvegarde.',
+    backupReminderOld:'Dernière sauvegarde il y a {d} jours — pensez à en exporter une nouvelle (Réglages).'
   },
   en:{
     appTitle:'Laverie des Anges — Checkout', history:'History', settings:'Settings',
@@ -533,7 +565,13 @@ const STRINGS = {
     stSyncToken:'Sync token (same as in the script)',
     markPaid:'Mark paid…', settledOn:'Settled on', reissue:'Reissue',
     reissueConfirm:'Create a new receipt dated today for this same order? The original will be marked as replaced.',
-    replacesReceipt:'Cancels and replaces receipt no.', replacedBy:'Replaced by receipt no.'
+    replacesReceipt:'Cancels and replaces receipt no.', replacedBy:'Replaced by receipt no.',
+    searchPlaceholder:'Search (name, phone, receipt no.…)', clearFilter:'Clear',
+    monthlyReport:'Monthly report', reportTitle:'Monthly report (VAT)', reportMonth:'Month',
+    reportCount:'Number of receipts', reportUnpaid:'of which unpaid (to be collected)',
+    reportExcluded:'Replaced receipts ("cancel and replace") are excluded from the report.',
+    backupReminderNever:'No backup exported yet — remember: Settings → Export backup.',
+    backupReminderOld:'Last backup {d} days ago — consider exporting a new one (Settings).'
   }
 };
 let lang = localStorage.getItem('lda_lang') || 'fr';
@@ -541,6 +579,7 @@ function t(key){ return (STRINGS[lang] && STRINGS[lang][key]) || key; }
 
 /* ================= STATE ================= */
 let cart = {}; // id -> qty
+let urgentSelected = false;
 let selectedPay = null;
 let settings = loadSettings();
 let customItems = loadCustomItems();
@@ -588,10 +627,21 @@ function saveReceipts(list){ localStorage.setItem('lda_receipts', JSON.stringify
 function nextReceiptNumber(){
   const year = new Date().getFullYear();
   let counters = JSON.parse(localStorage.getItem('lda_counters') || '{}');
-  counters[year] = (counters[year] || 0) + 1;
-  localStorage.setItem('lda_counters', JSON.stringify(counters));
   const dev = (settings.deviceCode || '').trim().toUpperCase();
-  return `${settings.receiptPrefix || 'LDA'}${dev ? '-'+dev : ''}-${year}-${String(counters[year]).padStart(4,'0')}`;
+  const prefix = `${settings.receiptPrefix || 'LDA'}${dev ? '-'+dev : ''}-${year}-`;
+  // Never reuse a number: even if the stored counter was lost, continue after
+  // the highest number found in the existing receipt history.
+  let maxExisting = 0;
+  getReceipts().forEach(r=>{
+    if(r.receiptNumber && r.receiptNumber.startsWith(prefix)){
+      const n = parseInt(r.receiptNumber.slice(prefix.length), 10);
+      if(!isNaN(n) && n > maxExisting) maxExisting = n;
+    }
+  });
+  const next = Math.max(counters[year] || 0, maxExisting) + 1;
+  counters[year] = next;
+  localStorage.setItem('lda_counters', JSON.stringify(counters));
+  return prefix + String(next).padStart(4,'0');
 }
 
 /* ================= RENDER CATALOG ================= */
@@ -607,12 +657,6 @@ function renderCatalog(){
     h3.textContent = lang==='fr' ? cat.fr : cat.en;
     wrap.appendChild(h3);
 
-    if(cat.key === 'ski'){
-      const urgWrap = document.createElement('div');
-      urgWrap.innerHTML = '';
-      wrap.appendChild(urgWrap);
-    }
-
     const table = document.createElement('table');
     table.className = 'items';
     table.innerHTML = `<thead><tr><th>${lang==='fr'?'Article':'Item'}</th><th class="price-col">${t('unitPrice')}</th><th class="qty-col">${t('qty')}</th></tr></thead>`;
@@ -622,7 +666,7 @@ function renderCatalog(){
       const name = lang==='fr' ? it.fr : it.en;
       const note = lang==='fr' ? it.note_fr : it.note_en;
       tr.innerHTML = `
-        <td>${name}${note?`<div class="item-note">${note}</div>`:''}</td>
+        <td>${esc(name)}${note?`<div class="item-note">${esc(note)}</div>`:''}</td>
         <td class="price-col">${fmt(it.price)}</td>
         <td class="qty-col"><input type="number" min="0" step="1" class="qty" data-id="${it.id}" value="${cart[it.id]||0}"></td>
       `;
@@ -647,12 +691,19 @@ function renderCatalog(){
       renderCart();
     });
   });
-  document.getElementById('urgentToggle').addEventListener('change', renderCart);
-  if(document.getElementById('urgentToggle')) document.getElementById('urgentToggle').checked = !!window._urgent;
+  const urgToggle = document.getElementById('urgentToggle');
+  urgToggle.checked = urgentSelected;
+  urgToggle.addEventListener('change', ()=>{ urgentSelected = urgToggle.checked; renderCart(); });
 }
 
 function fmt(n){
   return n.toLocaleString(lang==='fr'?'fr-FR':'en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+}
+
+// Escape user-entered text before inserting it into HTML templates,
+// so names like "O'Brien <fils>" display literally instead of breaking markup.
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 /* ================= CART CALC ================= */
@@ -706,7 +757,7 @@ function renderCart(){
     let html = '';
     c.lines.forEach(l=>{
       const name = lang==='fr'? l.item.fr : l.item.en;
-      html += `<div class="cart-line"><span>${l.qty} × ${name}</span><span>${fmt(l.lineTotal)}</span></div>`;
+      html += `<div class="cart-line"><span>${l.qty} × ${esc(name)}</span><span>${fmt(l.lineTotal)}</span></div>`;
     });
     html += `<div class="cart-line"><span>${t('subtotal')}</span><span>${fmt(c.subtotal)}</span></div>`;
     if(c.urgentChecked){
@@ -821,7 +872,7 @@ function generateReceipt(){
 
   const receiptNumber = nextReceiptNumber();
   const record = {
-    receiptNumber, date, issuedAt: date,
+    receiptNumber, date, issuedAt: date, issuedTime: new Date().toTimeString().slice(0,5),
     client:{lastName, firstName, phone, email, address},
     lines: c.lines.map(l=>({id:l.item.id, fr:l.item.fr, en:l.item.en, qty:l.qty, unitPrice:l.item.price, lineTotal:l.lineTotal})),
     subtotal:c.subtotal, urgent:c.urgentChecked, urgentSurcharge:c.urgentSurcharge,
@@ -838,7 +889,7 @@ function generateReceipt(){
   document.getElementById('receiptModal').classList.remove('hidden');
 
   // reset form for next transaction
-  cart = {}; selectedPay = null;
+  cart = {}; selectedPay = null; urgentSelected = false;
   document.getElementById('discountValue').value = 0;
   document.getElementById('cLastName').value='';
   document.getElementById('cFirstName').value='';
@@ -861,15 +912,14 @@ function renderReceiptHTML(r){
     const name = lang==='fr' ? l.fr : l.en;
     if(vatApplicable){
       const unitHT = l.unitPrice / (1+rate/100);
-      const lineHT = l.lineTotal / (1+rate/100);
       rowsHtml += `<tr>
-        <td>${name}</td><td>${l.qty}</td>
+        <td>${esc(name)}</td><td>${l.qty}</td>
         <td>${fmt(unitHT)}</td><td>${rate}%</td>
         <td>${fmt(l.unitPrice)}</td><td>${fmt(l.lineTotal)}</td>
       </tr>`;
     } else {
       rowsHtml += `<tr>
-        <td>${name}</td><td>${l.qty}</td>
+        <td>${esc(name)}</td><td>${l.qty}</td>
         <td>${fmt(l.unitPrice)}</td><td>${fmt(l.lineTotal)}</td>
       </tr>`;
     }
@@ -888,7 +938,7 @@ function renderReceiptHTML(r){
   const payLabelMap = {cash:t('statusCash'), card:t('statusCard'), gift:t('statusGift'), unpaid:t('statusUnpaid')};
   let payExtraHtml = '';
   if(r.paymentMethod==='gift' && r.extra){
-    payExtraHtml = `<div>${t('giftCode')}: ${r.extra.giftCode||'-'}</div>`;
+    payExtraHtml = `<div>${t('giftCode')}: ${esc(r.extra.giftCode||'-')}</div>`;
   }
 
   const html = `
@@ -896,27 +946,27 @@ function renderReceiptHTML(r){
       <div style="display:flex;gap:10px;align-items:flex-start;">
         <img src="${settings.logo || 'logo.svg'}">
         <div class="r-company">
-          <b>${settings.companyName}</b><br>
-          ${settings.address}<br>
-          ${t('phoneLabel')}: ${settings.phone}<br>
-          ${settings.siret ? t('siretLabel')+': '+settings.siret+'<br>' : ''}
-          ${settings.legalForm ? settings.legalForm+'<br>' : ''}
-          ${vatApplicable && settings.vatNumber ? t('vatNoLabel')+': '+settings.vatNumber : ''}
+          <b>${esc(settings.companyName)}</b><br>
+          ${esc(settings.address)}<br>
+          ${t('phoneLabel')}: ${esc(settings.phone)}<br>
+          ${settings.siret ? t('siretLabel')+': '+esc(settings.siret)+'<br>' : ''}
+          ${settings.legalForm ? esc(settings.legalForm)+'<br>' : ''}
+          ${vatApplicable && settings.vatNumber ? t('vatNoLabel')+': '+esc(settings.vatNumber) : ''}
         </div>
       </div>
       <div class="r-meta">
         <div class="rnum">${t('receiptNo')} ${r.receiptNumber}</div>
-        <div>${t('dateLabel')}: ${r.date}</div>
+        <div>${t('dateLabel')}: ${r.date}${r.issuedTime ? ' — '+r.issuedTime : ''}</div>
         ${r.replaces ? `<div>${t('replacesReceipt')} ${r.replaces}</div>` : ''}
       </div>
     </div>
 
     <h3>${t('client')}</h3>
     <div class="r-client">
-      ${[r.client.firstName, r.client.lastName].filter(Boolean).join(' ')}<br>
-      ${t('phoneLabel')}: ${r.client.phone}<br>
-      ${r.client.email ? t('emailLabel')+': '+r.client.email+'<br>' : ''}
-      ${r.client.address ? t('addressLabel')+': '+r.client.address+'<br>' : ''}
+      ${esc([r.client.firstName, r.client.lastName].filter(Boolean).join(' '))}<br>
+      ${t('phoneLabel')}: ${esc(r.client.phone)}<br>
+      ${r.client.email ? t('emailLabel')+': '+esc(r.client.email)+'<br>' : ''}
+      ${r.client.address ? t('addressLabel')+': '+esc(r.client.address)+'<br>' : ''}
     </div>
 
     <h3>${t('description')}</h3>
@@ -952,9 +1002,38 @@ function renderReceiptHTML(r){
 }
 
 /* ================= HISTORY ================= */
+let historyQuery = '', historyDateFilter = '';
 function openHistory(){
-  const receipts = getReceipts().slice().reverse();
   const el = document.getElementById('history');
+  el.innerHTML = `
+    <div class="row2" style="margin-bottom:10px;">
+      <input id="histSearch" placeholder="${t('searchPlaceholder')}" value="${esc(historyQuery)}" style="padding:7px 9px;border:1px solid var(--border);border-radius:6px;">
+      <div style="display:flex;gap:6px;">
+        <input id="histDate" type="date" value="${historyDateFilter}" style="flex:1;padding:7px 9px;border:1px solid var(--border);border-radius:6px;">
+        <button class="btn btn-light" onclick="clearHistoryFilters()">${t('clearFilter')}</button>
+      </div>
+    </div>
+    <div id="historyList"></div>`;
+  document.getElementById('histSearch').addEventListener('input', e=>{ historyQuery = e.target.value; renderHistoryList(); });
+  document.getElementById('histDate').addEventListener('change', e=>{ historyDateFilter = e.target.value; renderHistoryList(); });
+  renderHistoryList();
+  document.getElementById('historyModal').classList.remove('hidden');
+}
+function clearHistoryFilters(){ historyQuery=''; historyDateFilter=''; openHistory(); }
+function renderHistoryList(){
+  const el = document.getElementById('historyList');
+  let receipts = getReceipts().slice().reverse();
+  const q = historyQuery.trim().toLowerCase();
+  const qPhone = normalizePhone(historyQuery);
+  if(q){
+    receipts = receipts.filter(r=>{
+      const name = ((r.client.firstName||'')+' '+(r.client.lastName||'')).toLowerCase();
+      return name.includes(q)
+        || r.receiptNumber.toLowerCase().includes(q)
+        || (qPhone.length>=4 && normalizePhone(r.client.phone).includes(qPhone));
+    });
+  }
+  if(historyDateFilter) receipts = receipts.filter(r=>r.date===historyDateFilter);
   if(receipts.length===0){
     el.innerHTML = `<p class="item-note">${t('noHistory')}</p>`;
   } else {
@@ -979,7 +1058,7 @@ function openHistory(){
       if(r.replaces) numCell += `<div class="item-note">${t('replacesReceipt')} ${r.replaces}</div>`;
       html += `<tr>
         <td>${numCell}</td><td>${r.date}</td>
-        <td>${[r.client.firstName, r.client.lastName].filter(Boolean).join(' ')}</td>
+        <td>${esc([r.client.firstName, r.client.lastName].filter(Boolean).join(' '))}</td>
         <td>${fmt(r.total)}</td>
         <td>${payCell}</td>
         <td style="white-space:nowrap;">
@@ -991,7 +1070,6 @@ function openHistory(){
     html += '</tbody></table>';
     el.innerHTML = html;
   }
-  document.getElementById('historyModal').classList.remove('hidden');
 }
 function reprint(receiptNumber){
   const r = getReceipts().find(x=>x.receiptNumber===receiptNumber);
@@ -1023,6 +1101,7 @@ function reissueReceipt(receiptNumber){
   copy.receiptNumber = newNumber;
   copy.date = new Date().toISOString().slice(0,10);
   copy.issuedAt = copy.date;
+  copy.issuedTime = new Date().toTimeString().slice(0,5);
   copy.replaces = orig.receiptNumber;
   delete copy.replacedBy;
   orig.replacedBy = newNumber;
@@ -1047,6 +1126,8 @@ function exportBackup(){
   a.download = 'laverie_des_anges_sauvegarde_' + new Date().toISOString().slice(0,10) + '.json';
   a.click();
   URL.revokeObjectURL(url);
+  localStorage.setItem('lda_last_backup', String(Date.now()));
+  document.getElementById('backupBanner').classList.add('hidden');
 }
 function importBackup(evt){
   const file = evt.target.files[0];
@@ -1067,12 +1148,46 @@ function importBackup(evt){
   };
   reader.readAsText(file);
 }
+/* ================= MONTHLY VAT REPORT ================= */
+function openReport(){
+  const monthInput = document.getElementById('reportMonth');
+  if(!monthInput.value) monthInput.value = new Date().toISOString().slice(0,7);
+  renderReport();
+  closeModal('historyModal');
+  document.getElementById('reportModal').classList.remove('hidden');
+}
+function renderReport(){
+  const month = document.getElementById('reportMonth').value;
+  const el = document.getElementById('reportContent');
+  // Replaced receipts are excluded: their replacement carries the amount.
+  const receipts = getReceipts().filter(r=>r.date && r.date.startsWith(month) && !r.replacedBy);
+  let ttc=0, ht=0, vat=0, unpaid=0;
+  receipts.forEach(r=>{
+    ttc += r.total;
+    if(r.vatRegimeAtSale==='applicable'){
+      const rate = r.vatRateAtSale||0;
+      const h = r.total/(1+rate/100);
+      ht += h; vat += r.total-h;
+    } else {
+      ht += r.total;
+    }
+    unpaid += r.balanceDue||0;
+  });
+  el.innerHTML = `
+    <div class="cart-line"><span>${t('reportCount')}</span><span>${receipts.length}</span></div>
+    <div class="cart-line"><span>${t('totalHT')}</span><span>${fmt(ht)}</span></div>
+    <div class="cart-line"><span>${t('totalVAT')}</span><span>${fmt(vat)}</span></div>
+    <div class="cart-total"><span>${t('totalTTC')}</span><span>${fmt(ttc)}</span></div>
+    ${unpaid>0 ? `<div class="cart-line" style="margin-top:8px;"><span>${t('reportUnpaid')}</span><span>${fmt(unpaid)}</span></div>` : ''}
+    <p class="item-note" style="margin-top:10px;">${t('reportExcluded')}</p>`;
+}
+
 function csvNum(v){ return v.toFixed(2).replace('.', ','); }
 function exportCsv(){
   const receipts = getReceipts();
-  let csv = 'Receipt No;Date;Last Name;First Name;Phone;Email;Address;Subtotal;Urgent Surcharge;Discount;Total TTC;Amount Paid;Balance Due;Payment Method\n';
+  let csv = 'Receipt No;Date;Time;Last Name;First Name;Phone;Email;Address;Subtotal;Urgent Surcharge;Discount;Total TTC;Amount Paid;Balance Due;Payment Method\n';
   receipts.forEach(r=>{
-    csv += [r.receiptNumber, r.date, r.client.lastName, r.client.firstName, r.client.phone, r.client.email, r.client.address,
+    csv += [r.receiptNumber, r.date, r.issuedTime||'', r.client.lastName, r.client.firstName, r.client.phone, r.client.email, r.client.address,
       csvNum(r.subtotal), csvNum(r.urgentSurcharge), csvNum(r.discountAmount), csvNum(r.total),
       csvNum(r.amountPaid), csvNum(r.balanceDue), r.paymentMethod].join(';') + '\n';
   });
@@ -1158,7 +1273,7 @@ function renderAllItemsList(){
     const catObj = CATS.find(c=>c.key===it.cat);
     const catLabel = catObj ? (lang==='fr'?catObj.fr:catObj.en) : it.cat;
     html += `<tr>
-      <td>${name}<div class="item-note">${catLabel}</div></td>
+      <td>${esc(name)}<div class="item-note">${esc(catLabel)}</div></td>
       <td class="price-col"><input type="number" min="0" step="0.01" class="edit-price-input" data-id="${it.id}" value="${it.price}" style="width:80px;text-align:center;"></td>
       <td><button class="btn btn-light" onclick="deleteAnyItem('${it.id}')">&times;</button></td>
     </tr>`;
@@ -1266,6 +1381,22 @@ function autofillClient(){
   }
 }
 
+/* ================= BACKUP REMINDER ================= */
+function maybeShowBackupBanner(){
+  if(getReceipts().length===0) return;
+  if(sessionStorage.getItem('lda_backup_banner_dismissed')) return;
+  const last = parseInt(localStorage.getItem('lda_last_backup')||'0',10);
+  const days = last ? Math.floor((Date.now()-last)/86400000) : null;
+  if(last && days < 7) return;
+  document.getElementById('backupBannerText').textContent =
+    last ? t('backupReminderOld').replace('{d}', days) : t('backupReminderNever');
+  document.getElementById('backupBanner').classList.remove('hidden');
+}
+function dismissBackupBanner(){
+  sessionStorage.setItem('lda_backup_banner_dismissed','1');
+  document.getElementById('backupBanner').classList.add('hidden');
+}
+
 /* ================= MISC ================= */
 function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
 function setDefaultDate(){ document.getElementById('cDate').value = new Date().toISOString().slice(0,10); }
@@ -1290,6 +1421,7 @@ document.getElementById('cPhone').addEventListener('input', autofillClient);
 document.getElementById('cPhone').addEventListener('blur', autofillClient);
 window.addEventListener('online', flushSyncQueue);
 flushSyncQueue();
+maybeShowBackupBanner();
 
 applyLogo();
 setDefaultDate();
